@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "AdminSetting": {
+      "title": "Admin Setting",
+      "description": "System and administrative configurations.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": ["key", "value"]
+    },
+    "UserAccount": {
+      "title": "User Account",
+      "description": "User referral and account details.",
+      "type": "object",
+      "properties": {
+        "phone": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "referred_by": {
+          "type": "string"
+        },
+        "clicks_count": {
+          "type": "integer"
+        },
+        "registrations_count": {
+          "type": "integer"
+        },
+        "purchases_count": {
+          "type": "integer"
+        },
+        "points": {
+          "type": "integer"
+        },
+        "pass_type": {
+          "type": "string"
+        }
+      },
+      "required": ["phone", "created_at"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Receipts and payments submitted by users.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "receipt_name": {
+          "type": "string"
+        },
+        "receipt_data_url": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "submitted_at": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string"
+        },
+        "ownership_id": {
+          "type": "string"
+        },
+        "issue_date": {
+          "type": "string"
+        },
+        "pass_type": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "email", "phone", "receipt_name", "receipt_data_url", "status", "submitted_at", "amount"]
+    }
+  },
+  "firestore": {
+    "/admin_settings/{key}": {
+      "schema": "AdminSetting",
+      "description": "Stores site-wide admin settings like passcode, bank details, and social links."
+    },
+    "/users_account/{phone}": {
+      "schema": "UserAccount",
+      "description": "Stores user referral tracking profiles indexed by phone number."
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Stores payment proof submissions for verification."
+    }
+  }
+}

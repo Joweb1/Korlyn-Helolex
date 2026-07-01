@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.jpg';
 
 interface SEOManagerProps {
   currentView: 'korlyn' | 'helolex' | 'admin' | 'print-certificate';
@@ -10,7 +11,7 @@ export const SEO_DATA = {
     description: 'Claim, showcase, and monetize your digital creations instantly with KORLYN. Easy-to-use live dashboards, verified ownership registries, and fast global payouts. No code required. Set up your custom digital store and start earning today.',
     keywords: 'korlyn, digital ownership, creator economy, digital store, quick payouts, no-code monetization, custom dashboard, asset certification',
     url: 'https://mydomain.com/',
-    imageUrl: '/src/assets/images/korlyn_cube_illustration_1782756172238.jpg',
+    imageUrl: korlynCubeImg,
     imageAlt: 'The KORLYN Premium Monolithic Product Cube',
     tagline: 'Zero Code. True Ownership. Instant Payouts.',
     structuredData: {
@@ -87,7 +88,7 @@ export const SEO_DATA = {
     description: 'Secure administrative interface. Oversee digital ownership contracts, audit incoming financial records, manage bank transfers, and provision secure mobile validation QR certificates.',
     keywords: 'admin console, secure registries, payout authorization, ownership contracts',
     url: 'https://mydomain.com/admin',
-    imageUrl: '/src/assets/images/korlyn_cube_illustration_1782756172238.jpg',
+    imageUrl: korlynCubeImg,
     imageAlt: 'Premium Security Gateway',
     tagline: 'Premium Title Ledger & Creator Governance.',
     structuredData: null,
@@ -98,7 +99,7 @@ export const SEO_DATA = {
     description: 'Official digital title verification registry page. Print or download certified credentials proving premium digital ownership under the HELOLEX protocol.',
     keywords: 'ownership certificate, print verification, digital credentials',
     url: 'https://mydomain.com/print-certificate',
-    imageUrl: '/src/assets/images/korlyn_cube_illustration_1782756172238.jpg',
+    imageUrl: korlynCubeImg,
     imageAlt: 'Premium Verification Seal',
     tagline: 'Official Sealed Digital Ownership Certificate.',
     structuredData: null,

@@ -450,8 +450,8 @@ export default function AdminPanel({
                     : 'bg-zinc-950/40 text-zinc-400 border-zinc-900 hover:text-sky-400'
                 }`}
               >
-                <Database className="w-3.5 h-3.5 text-sky-400" />
-                SUPABASE ENGINE
+                <Database className="w-3.5 h-3.5 text-orange-400" />
+                FIREBASE ENGINE
               </button>
             </div>
 
@@ -1024,7 +1024,7 @@ export default function AdminPanel({
                 </div>
               </div>
             ) : activeTab === 'supabase' ? (
-              /* Supabase Engine Control Panel */
+              /* Firebase Engine Control Panel */
               <div className="space-y-6">
                 {/* Status card */}
                 <div className={`p-6 border rounded-2xl relative overflow-hidden transition-all ${
@@ -1032,7 +1032,7 @@ export default function AdminPanel({
                     ? 'bg-[#002B1D]/20 border-emerald-500/30 text-emerald-300'
                     : 'bg-[#2D1600]/20 border-amber-500/30 text-amber-300'
                 }`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-blue-500/5 blur-3xl rounded-full" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/5 to-amber-500/5 blur-3xl rounded-full" />
                   <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -1040,13 +1040,13 @@ export default function AdminPanel({
                           isSupabaseConfigured() ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-amber-400 shadow-lg shadow-amber-500/50 animate-pulse'
                         }`} />
                         <h3 className="text-xs font-mono tracking-widest font-black uppercase text-white">
-                          {isSupabaseConfigured() ? 'SUPABASE ENGINE: ONLINE' : 'SUPABASE ENGINE: FALLBACK MODE'}
+                          {isSupabaseConfigured() ? 'FIREBASE FIRESTORE ENGINE: ONLINE' : 'FIREBASE FIRESTORE ENGINE: FALLBACK MODE'}
                         </h3>
                       </div>
                       <p className="text-xs text-zinc-400 font-mono leading-relaxed max-w-2xl">
                         {isSupabaseConfigured()
-                          ? 'The application is successfully connected to your real Supabase Database and Cloud Storage bucket. All member records, reference referrals, and uploaded payments receipts are persistent.'
-                          : 'The application is running in local sandbox fallback mode using localStorage. To persist data in production (e.g. Vercel deployment), configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'}
+                          ? 'The application is successfully connected to your real Firebase Firestore database. All member records, reference referrals, and uploaded payments receipts are persistent. Note: Supabase Bucket remains active exclusively for receipt storage.'
+                          : 'The application is running in local sandbox fallback mode using localStorage. To persist data in production, configure your Firebase applet keys.'}
                       </p>
                     </div>
                   </div>
@@ -1054,15 +1054,15 @@ export default function AdminPanel({
 
                 {/* Local Storage Persistency Control Card */}
                 <div className="p-6 bg-zinc-950/60 border border-zinc-900 rounded-2xl space-y-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-500/5 to-transparent blur-2xl rounded-full" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-500/5 to-transparent blur-2xl rounded-full" />
                   <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
                       <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest flex items-center gap-2">
-                        <Database className="w-4 h-4 text-purple-400 shrink-0" />
+                        <Database className="w-4 h-4 text-orange-400 shrink-0" />
                         LOCAL STORAGE PERSISTENCY CONTROL
                       </h4>
                       <p className="text-[11px] text-zinc-400 font-mono leading-relaxed max-w-2xl">
-                        Toggle to disable all local browser caching (localStorage). When disabled, the application is strictly prohibited from writing or reading user data, payments, and admin settings to browser cache, executing all operations strictly against the live Supabase database.
+                        Toggle to disable all local browser caching (localStorage). When disabled, the application is strictly prohibited from writing or reading user data, payments, and admin settings to browser cache, executing all operations strictly against the live Firebase Firestore database.
                       </p>
                     </div>
 
@@ -1090,7 +1090,7 @@ export default function AdminPanel({
                   </div>
                 </div>
 
-                {/* Supabase Test/Seed Action Panel */}
+                {/* Firebase Test/Seed Action Panel */}
                 <div className="p-6 bg-zinc-950/60 border border-zinc-900 rounded-2xl space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -1098,7 +1098,7 @@ export default function AdminPanel({
                         DATABASE DIAGNOSTICS & DATA SEEDER
                       </h4>
                       <p className="text-[11px] text-zinc-500 font-mono leading-relaxed">
-                        Verify the live database connection, check database tables existence, and seed mock participant data directly into Supabase.
+                        Verify the live Firebase connection, check Firestore collections existence, and seed mock participant data directly into Firebase Firestore.
                       </p>
                     </div>
                     <button
@@ -1122,7 +1122,7 @@ export default function AdminPanel({
                       className={`px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 select-none transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         isTestingSupabase
                           ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20'
+                          : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-md shadow-orange-500/10 hover:shadow-orange-500/20'
                       }`}
                     >
                       {isTestingSupabase ? (
@@ -1131,7 +1131,7 @@ export default function AdminPanel({
                           RUNNING TEST...
                         </>
                       ) : (
-                        'TEST & SEED SUPABASE'
+                        'TEST & SEED FIREBASE'
                       )}
                     </button>
                   </div>
@@ -1193,45 +1193,45 @@ export default function AdminPanel({
                 {/* Setup Instructions Card */}
                 <div className="bg-zinc-950/60 border border-zinc-900 rounded-2xl p-6 space-y-6">
                   <div>
-                    <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest mb-1">SUPABASE INITIALIZATION PATHWAY</h4>
-                    <p className="text-xs text-zinc-500 font-mono">Follow these steps to establish durable cloud storage and database persistence:</p>
+                    <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest mb-1">FIREBASE INITIALIZATION PATHWAY</h4>
+                    <p className="text-xs text-zinc-500 font-mono">Follow these steps to ensure durable Firestore database and Supabase Storage persistence:</p>
                   </div>
 
                   <div className="space-y-4 text-xs font-mono text-zinc-400">
                     <div className="flex gap-3">
                       <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">1</div>
                       <div className="space-y-1">
-                        <strong className="text-zinc-200">Create a New Supabase Project</strong>
-                        <p>Go to <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">supabase.com</a>, create a free project, and find your <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">Project URL</code> and <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">Anon Key</code> inside Project Settings &gt; API.</p>
+                        <strong className="text-zinc-200">Firebase Applet Provisioning</strong>
+                        <p>Your Firebase applet with Firestore database ID <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">ai-studio-remixremixkorlyn-4a6ad53c-c9b4-4fb0-8d4e-5603377ba9df</code> is already provisioned and fully bound within our environment.</p>
                       </div>
                     </div>
 
                     <div className="flex gap-3">
                       <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">2</div>
                       <div className="space-y-1">
-                        <strong className="text-zinc-200">Initialize SQL Tables</strong>
-                        <p>Open the <code className="bg-zinc-900 text-sky-400 px-1 py-0.5 rounded">SQL Editor</code> in your Supabase dashboard, click "New Query", paste the SQL schema below, and click <strong className="text-emerald-400">Run</strong>.</p>
+                        <strong className="text-zinc-200">Apply Firestore Rules</strong>
+                        <p>Verify that your Firestore Security Rules allow read/write requests to the database. Below is the recommended security ruleset for production persistence.</p>
                       </div>
                     </div>
 
                     <div className="flex gap-3">
                       <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">3</div>
                       <div className="space-y-1">
-                        <strong className="text-zinc-200">Configure Storage Bucket</strong>
-                        <p>Navigate to <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">Storage</code> in your Supabase dashboard. Create a new bucket named <code className="bg-zinc-900 text-emerald-400 px-1 py-0.5">receipts</code>. Make sure to toggle on <strong className="text-emerald-400">Public bucket</strong> so anyone can fetch receipt proofs.</p>
+                        <strong className="text-zinc-200">Configure Supabase Storage Bucket</strong>
+                        <p>Navigate to <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">Storage</code> in your Supabase dashboard. Create a new public bucket named <code className="bg-zinc-900 text-emerald-400 px-1 py-0.5">receipts</code> to host receipt image proofs securely.</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* SQL Code block */}
+                {/* Firestore Rules Code block */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">SUPABASE DATABASE SCHEMA SCRIPT</span>
+                    <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">FIRESTORE SECURITY RULES SCRIPT</span>
                     <button
                       onClick={() => {
-                        const sqlText = `-- Create Users Account Table\ncreate table if not exists public.users_account (\n  phone text primary key,\n  email text,\n  full_name text,\n  pass_type text default 'single',\n  clicks_count integer default 0,\n  registrations_count integer default 0,\n  purchases_count integer default 0,\n  points integer default 0,\n  referred_by text,\n  created_at text not null\n);\n\n-- Enable RLS for Users Account\nalter table public.users_account enable row level security;\ncreate policy "Allow public access to users_account" on public.users_account for all using (true) with check (true);\n\n-- Create Payments Table\ncreate table if not exists public.payments (\n  id text primary key,\n  phone text references public.users_account(phone) on delete cascade,\n  email text,\n  receipt_name text,\n  receipt_data_url text,\n  full_name text,\n  amount text,\n  pass_type text,\n  status text default 'pending',\n  submitted_at text,\n  ownership_id text,\n  issue_date text\n);\n\n-- Enable RLS for Payments\nalter table public.payments enable row level security;\ncreate policy "Allow public access to payments" on public.payments for all using (true) with check (true);\n\n-- Create Admin Settings Table\ncreate table if not exists public.admin_settings (\n  key text primary key,\n  value text\n);\n\n-- Enable RLS for Admin Settings\nalter table public.admin_settings enable row level security;\ncreate policy "Allow public access to admin_settings" on public.admin_settings for all using (true) with check (true);`;
-                        navigator.clipboard.writeText(sqlText);
+                        const rulesText = `rules_version = '2';\nservice cloud::firestore {\n  match /databases/{database}/documents {\n    match /admin_settings/{settingKey} {\n      allow read, write: if true;\n    }\n    match /users_account/{userPhone} {\n      allow read, write: if true;\n    }\n    match /payments/{paymentId} {\n      allow read, write: if true;\n    }\n  }\n}`;
+                        navigator.clipboard.writeText(rulesText);
                         setCopiedSql(true);
                         setTimeout(() => setCopiedSql(false), 2000);
                       }}
@@ -1240,65 +1240,32 @@ export default function AdminPanel({
                       {copiedSql ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          COPIED SCHEMA!
+                          COPIED RULES!
                         </>
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5" />
-                          COPY SQL CODE
+                          COPY RULES CODE
                         </>
                       )}
                     </button>
                   </div>
 
                   <pre className="p-4 bg-zinc-950/80 border border-zinc-900 rounded-xl font-mono text-[10px] text-zinc-400 overflow-x-auto max-h-72 leading-relaxed whitespace-pre select-all">
-{`-- Create Users Account Table
-create table if not exists public.users_account (
-  phone text primary key,
-  email text,
-  full_name text,
-  pass_type text default 'single',
-  clicks_count integer default 0,
-  registrations_count integer default 0,
-  purchases_count integer default 0,
-  points integer default 0,
-  referred_by text,
-  created_at text not null
-);
-
--- Enable RLS for Users Account
-alter table public.users_account enable row level security;
-create policy "Allow public access to users_account" on public.users_account for all using (true) with check (true);
-
--- Create Payments Table
-create table if not exists public.payments (
-  id text primary key,
-  phone text references public.users_account(phone) on delete cascade,
-  email text,
-  receipt_name text,
-  receipt_data_url text,
-  full_name text,
-  amount text,
-  pass_type text,
-  status text default 'pending',
-  submitted_at text,
-  ownership_id text,
-  issue_date text
-);
-
--- Enable RLS for Payments
-alter table public.payments enable row level security;
-create policy "Allow public access to payments" on public.payments for all using (true) with check (true);
-
--- Create Admin Settings Table
-create table if not exists public.admin_settings (
-  key text primary key,
-  value text
-);
-
--- Enable RLS for Admin Settings
-alter table public.admin_settings enable row level security;
-create policy "Allow public access to admin_settings" on public.admin_settings for all using (true) with check (true);`}
+{`rules_version = '2';
+service cloud::firestore {
+  match /databases/{database}/documents {
+    match /admin_settings/{settingKey} {
+      allow read, write: if true;
+    }
+    match /users_account/{userPhone} {
+      allow read, write: if true;
+    }
+    match /payments/{paymentId} {
+      allow read, write: if true;
+    }
+  }
+}`}
                   </pre>
                 </div>
               </div>

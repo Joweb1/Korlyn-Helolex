@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NeonBorder from './NeonBorder';
+import helolexBgImg from '../assets/images/helolex_cinematic_orange_bg_1782758626894.jpg';
 import { 
   Shield, 
   Terminal, 
@@ -330,7 +331,7 @@ export default function HelolexPage({
         <div 
           className="w-full h-full bg-cover bg-center origin-center transition-transform duration-100 dark:opacity-65 opacity-25"
           style={{
-            backgroundImage: `url(/src/assets/images/helolex_cinematic_orange_bg_1782758626894.jpg)`,
+            backgroundImage: `url(${helolexBgImg})`,
             transform: `scale(${scrollZoom})`,
             backgroundBlendMode: 'overlay',
           }}

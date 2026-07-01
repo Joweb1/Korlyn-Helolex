@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NeonBorder from './NeonBorder';
+import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.jpg';
 import { 
   ArrowRight, 
   Gamepad2, 
@@ -519,7 +520,7 @@ export default function KorlynPage({
                 <NeonBorder />
                 {/* Embedded generated cube image */}
                 <img 
-                  src="/src/assets/images/korlyn_cube_illustration_1782756172238.jpg" 
+                  src={korlynCubeImg} 
                   alt="KORLYN Monolithic Product Cube"
                   className="w-full h-full object-cover rounded-xl opacity-90 group-hover:scale-105 group-hover:opacity-100 transition-all duration-700 select-none pointer-events-none"
                   referrerPolicy="no-referrer"
