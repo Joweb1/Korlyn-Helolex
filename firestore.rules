@@ -1,13 +1,6 @@
-rules_version = '2';
-service cloud::firestore {
+service cloud.firestore {
   match /databases/{database}/documents {
-    match /admin_settings/{settingKey} {
-      allow read, write: if true;
-    }
-    match /users_account/{userPhone} {
-      allow read, write: if true;
-    }
-    match /payments/{paymentId} {
+    match /{document=**} {
       allow read, write: if true;
     }
   }
