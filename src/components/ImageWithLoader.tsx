@@ -29,13 +29,14 @@ export default function ImageWithLoader({
 
   return (
     <div className={`relative overflow-hidden ${containerClassName}`}>
-      {/* Cool Cyberpunk buffering loader overlay */}
+      {/* Premium skeletal moving gradient background buffering loader */}
       {!isLoaded && (
-        <div className="absolute inset-0 bg-zinc-900/10 dark:bg-zinc-950/40 backdrop-blur-sm flex items-center justify-center animate-pulse z-10">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 bg-[length:200%_100%] animate-shimmer" />
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-6 h-6 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-            <span className="text-[8px] font-mono uppercase tracking-widest text-purple-400 font-bold">LOADING VISUAL...</span>
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-zinc-200 via-zinc-100 to-zinc-200 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 bg-[length:200%_100%] animate-shimmer flex items-center justify-center">
+          <div className="absolute inset-0 opacity-40 bg-gradient-to-tr from-purple-500/10 to-blue-500/10" />
+          {/* Minimal chic glowing indicator */}
+          <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/45 dark:bg-black/45 backdrop-blur-md border border-white/20 dark:border-zinc-800/40 shadow-lg shadow-black/5 animate-pulse">
+            <div className="w-4 h-4 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
+            <span className="text-[7px] font-mono tracking-[0.2em] text-purple-600 dark:text-purple-400 font-bold uppercase">BUFFERING IMAGE</span>
           </div>
         </div>
       )}

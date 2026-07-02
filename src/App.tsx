@@ -1267,6 +1267,7 @@ export default function App() {
             onUpdateProfile={handleUpdateProfile}
             socialLinks={socialLinks}
             onRefresh={handleRefreshData}
+            isLoading={dbLoading}
           />
         ) : (
           <HelolexPage 
@@ -1602,7 +1603,7 @@ export default function App() {
       <NetworkStatusToast status={networkStatus} />
 
       {/* Database Secure Loading Animation Overlay */}
-      {dbLoading && (
+      {dbLoading && !(currentView === 'helolex' && loggedInUserPhone) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm select-none pointer-events-auto animate-fade-in">
           <div className="relative p-[2px] rounded-2xl overflow-hidden w-72 sm:w-80 shadow-[0_0_50px_rgba(139,92,246,0.15)]">
             {/* Edge gradient moving border line */}

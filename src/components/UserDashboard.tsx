@@ -41,6 +41,7 @@ import NeonBorder from './NeonBorder';
 import ThemeToggle from './ThemeToggle';
 import { isFirebaseConfigured, uploadReceipt, deleteReceiptByUrl } from '../firebaseClient';
 import ImageWithLoader from './ImageWithLoader';
+import DashboardSkeleton from './DashboardSkeleton';
 
 const getSocialIcon = (id: string) => {
   switch (id) {
@@ -109,6 +110,7 @@ interface UserDashboardProps {
   onUpdateProfile: (fullName: string, email: string) => void;
   socialLinks: SocialLink[];
   onRefresh?: () => Promise<void>;
+  isLoading?: boolean;
 }
 
 export default function UserDashboard({
@@ -123,7 +125,8 @@ export default function UserDashboard({
   bankDetails,
   onUpdateProfile,
   socialLinks = [],
-  onRefresh
+  onRefresh,
+  isLoading = false
 }: UserDashboardProps) {
   // Form fields for pass registration if not submitted
   const [email, setEmail] = useState(user.email || '');
@@ -352,11 +355,11 @@ export default function UserDashboard({
             {onRefresh && (
               <button
                 onClick={handleManualRefresh}
-                disabled={isRefreshing}
+                disabled={isRefreshing || isLoading}
                 className="flex items-center justify-center p-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900/80 hover:dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 hover:dark:text-white transition-all border dark:border-purple-500/10 border-zinc-200 cursor-pointer disabled:opacity-50"
                 title="Refresh database records"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing || isLoading ? 'animate-spin' : ''}`} />
               </button>
             )}
             <button
@@ -371,7 +374,10 @@ export default function UserDashboard({
       </nav>
 
       {/* Main Dashboard Layout */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Profile Card & Navigation Desk (Col 4) */}
         <div className="lg:col-span-4 space-y-6">
@@ -1368,6 +1374,7 @@ export default function UserDashboard({
         </div>
 
       </div>
+      )}
 
     </div>
   );
