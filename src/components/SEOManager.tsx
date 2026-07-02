@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.jpg';
+import helolexGameBanner from '../assets/images/helolex_game_banner.png';
 
 interface SEOManagerProps {
   currentView: 'korlyn' | 'helolex' | 'admin' | 'print-certificate';
@@ -49,7 +50,7 @@ export const SEO_DATA = {
     description: 'Play premium indie games like Solstice Assassin, Ludo Max, and Sweet Match on HELOLEX. Claim your official verified game pass and unlock your mobile validation QR code. Enter the elite gaming lobby now.',
     keywords: 'helolex, play indie games, solstice assassin, ludo max, sweet match, boaster, road ball, game pass, mobile qr code, play to earn, epic games',
     url: 'https://mydomain.com/helolex',
-    imageUrl: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png',
+    imageUrl: helolexGameBanner,
     imageAlt: 'HELOLEX Cinematic Game Realms Banner',
     tagline: 'Epic Indie Games. Verified Official Passes. Instant Mobile QR.',
     structuredData: {
@@ -59,13 +60,13 @@ export const SEO_DATA = {
       'url': 'https://mydomain.com/helolex',
       'description': 'Premium indie game publishing hub featuring Solstice Assassin, Helolex Ludo Max, Helolex Sweet Match, Helolex Boaster, and Helolex Road Ball with secure validation passes.',
       'genre': 'Indie Gaming',
-      'image': 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png',
+      'image': helolexGameBanner,
       'publisher': {
         '@type': 'Organization',
         'name': 'HELOLEX',
         'logo': {
           '@type': 'ImageObject',
-          'url': 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png'
+          'url': helolexGameBanner
         }
       },
       'hasPart': [
@@ -180,9 +181,33 @@ export default function SEOManager({ currentView }: SEOManagerProps) {
       script.id = 'seo-jsonld';
       script.type = 'application/ld+json';
       
+      // Helper to recursively make relative URLs absolute in schema
+      const resolveAbsolute = (val: any): any => {
+        if (typeof val === 'string') {
+          if (val.startsWith('/') || val.startsWith('.') || val.includes('assets/images/')) {
+            const cleanPath = val.replace(/^\.+/, '');
+            return window.location.origin + (cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath);
+          }
+          return val;
+        }
+        if (Array.isArray(val)) {
+          return val.map(resolveAbsolute);
+        }
+        if (val !== null && typeof val === 'object') {
+          const res: any = {};
+          for (const k in val) {
+            res[k] = resolveAbsolute(val[k]);
+          }
+          return res;
+        }
+        return val;
+      };
+
+      const resolvedStructuredData = resolveAbsolute(data.structuredData);
+
       // Inject standard and current domain-specific attributes
       const finalSchema = {
-        ...data.structuredData,
+        ...resolvedStructuredData,
         'url': siteUrl
       };
       
