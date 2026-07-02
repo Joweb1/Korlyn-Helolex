@@ -39,7 +39,8 @@ import {
 import { UserAccount, PaymentRecord, BankDetails, SocialLink } from '../types';
 import NeonBorder from './NeonBorder';
 import ThemeToggle from './ThemeToggle';
-import { isSupabaseConfigured, uploadReceipt, deleteReceiptByUrl } from '../supabaseClient';
+import { isFirebaseConfigured, uploadReceipt, deleteReceiptByUrl } from '../firebaseClient';
+import ImageWithLoader from './ImageWithLoader';
 
 const getSocialIcon = (id: string) => {
   switch (id) {
@@ -133,6 +134,7 @@ export default function UserDashboard({
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -161,13 +163,16 @@ export default function UserDashboard({
   // Tab control for approved user workspace
   const [activeSubTab, setActiveSubTab] = useState<'certificate' | 'referrals'>('certificate');
 
-  // Simple local phone helper for matching
+  // Standardized phone helper for matching
   const normalizePhone = (phoneStr: string): string => {
-    let cleaned = phoneStr.replace(/\D/g, '');
-    if (cleaned.startsWith('0')) {
-      cleaned = '234' + cleaned.substring(1);
+    let clean = phoneStr.replace(/\D/g, '');
+    if (clean.startsWith('0')) {
+      clean = clean.replace(/^0+/, '');
     }
-    return cleaned;
+    if (clean.startsWith('234')) {
+      return '+' + clean;
+    }
+    return '+234' + clean;
   };
 
   // Keep form fields and edit inputs synchronized with the parent user state
@@ -255,10 +260,11 @@ export default function UserDashboard({
 
     setFormError('');
     setIsUploading(true);
+    setUploadProgress(0);
 
     try {
       let finalReceiptUrl = receiptDataUrl;
-      if (isSupabaseConfigured() && receiptFile) {
+      if (isFirebaseConfigured() && receiptFile) {
         // If user is uploading a new file, find previous file in the database and delete it first
         if (payment && payment.receiptDataUrl) {
           try {
@@ -268,8 +274,10 @@ export default function UserDashboard({
             console.warn('Non-blocking error deleting previous receipt:', deleteError);
           }
         }
-        // Upload real file to Supabase Cloud Storage
-        finalReceiptUrl = await uploadReceipt(receiptFile, user.phone);
+        // Upload real file to Firebase Cloud Storage / Cloudinary
+        finalReceiptUrl = await uploadReceipt(receiptFile, user.phone, (percent) => {
+          setUploadProgress(percent);
+        });
       }
 
       const amt = user.passType === 'multiple' ? '₦100,000' : '₦25,000';
@@ -285,7 +293,7 @@ export default function UserDashboard({
       setFormSuccess(true);
     } catch (uploadErr: any) {
       console.warn(uploadErr);
-      setFormError(uploadErr?.message || 'Failed to upload receipt file to Supabase Storage. Please try again.');
+      setFormError(uploadErr?.message || 'Failed to upload receipt file to Cloudinary. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -921,7 +929,7 @@ export default function UserDashboard({
 
                     {/* QR Code Frame */}
                     <div className="p-3 bg-white rounded-xl shadow-lg shadow-purple-500/5 hover:scale-[1.02] transition-transform duration-300">
-                      <img 
+                      <ImageWithLoader 
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
                           JSON.stringify({
                             owner: user.fullName || 'HELOLEX Owner',
@@ -1255,6 +1263,22 @@ export default function UserDashboard({
                           </div>
                         </div>
                       </div>
+
+                      {isUploading && (
+                        <div className="space-y-1.5 pt-1 pb-2">
+                          <div className="flex justify-between items-center text-[10px] font-mono">
+                            <span className="text-zinc-400 font-bold uppercase tracking-wider">Uploading Payment Receipt</span>
+                            <span className="text-purple-400 font-black">{uploadProgress}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                            <div 
+                              className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-[9px] text-zinc-500 font-mono italic">Please keep this page open, uploading large screenshots can take a moment...</p>
+                        </div>
+                      )}
 
                       {formError && (
                         <p className="text-xs text-red-500 font-mono text-center">

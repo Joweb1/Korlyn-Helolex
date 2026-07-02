@@ -14,15 +14,15 @@ import PrintCertificatePage from './components/PrintCertificatePage';
 import SEOManager from './components/SEOManager';
 import { Lock, ShieldAlert, AlertCircle, X, Check, Cpu } from 'lucide-react';
 import {
-  isSupabaseConfigured,
-  supabase,
-  fetchUsersFromSupabase,
-  upsertUserToSupabase,
-  fetchPaymentsFromSupabase,
-  upsertPaymentToSupabase,
-  fetchAdminSettingsFromSupabase,
-  upsertAdminSettingToSupabase
-} from './supabaseClient';
+  isFirebaseConfigured,
+  fetchUsersFromFirebase,
+  upsertUserToFirebase,
+  fetchPaymentsFromFirebase,
+  upsertPaymentToFirebase,
+  fetchAdminSettingsFromFirebase,
+  upsertAdminSettingToFirebase,
+  trackReferralClickInFirebase
+} from './firebaseClient';
 import { Toast } from './components/ToastAndConfetti';
 import { NetworkStatusToast } from './components/NetworkStatusToast';
 
@@ -96,17 +96,17 @@ const setStoredReferrer24h = (phone: string) => {
 };
 
 export const normalizePhone = (phone: string): string => {
-  const clean = phone.replace(/\D/g, '');
+  let clean = phone.replace(/\D/g, '');
+  // If the number starts with '0', strip all leading zeros (e.g., "08031234567" -> "8031234567")
+  if (clean.startsWith('0')) {
+    clean = clean.replace(/^0+/, '');
+  }
+  // If it starts with '234' after removing leading zeros, format with leading '+'
   if (clean.startsWith('234')) {
     return '+' + clean;
   }
-  if (clean.length === 10) {
-    return '+234' + clean;
-  }
-  if (clean.length === 11 && clean.startsWith('0')) {
-    return '+234' + clean.slice(1);
-  }
-  return '+' + clean;
+  // Otherwise, prefix with +234
+  return '+234' + clean;
 };
 
 const INITIAL_SEED_DATA: PaymentRecord[] = [
@@ -325,9 +325,9 @@ export default function App() {
 
     if (!background) {
       wakeUpWarningId = setTimeout(() => {
-        setDbLoadingText('Supabase database is waking up from sleep mode (Free tier)... please stand by...');
+        setDbLoadingText('Firebase database connection is taking longer than expected... please stand by...');
         setToast({
-          message: 'Database is waking up from sleep mode (this can take up to 30 seconds on the free tier). Please wait...',
+          message: 'Firebase is establishing connection to the cloud database. Please wait...',
           type: 'info'
         });
       }, 7000);
@@ -354,10 +354,10 @@ export default function App() {
         if (!background) {
           setToast({
             message: isLSDisabled
-              ? 'Database took too long to wake up. Please refresh again shortly or check if your Supabase project is active.'
+              ? 'Database took too long to respond. Please refresh again shortly or check your Firebase database connection.'
               : (isUnstable 
                   ? 'Connection is unstable and timed out. Synced to local cache.' 
-                  : 'Database sync took too long. Operating in offline/hybrid mode.'),
+                  : 'Firebase database sync took too long. Operating in local sandbox offline mode.'),
             type: 'info'
           });
         }
@@ -369,7 +369,7 @@ export default function App() {
         if (!background) {
           setToast({
             message: isLSDisabled
-              ? `Database query failed: ${err.message || 'unreachable'}. Please check if your Supabase project is paused.`
+              ? `Database query failed: ${err.message || 'unreachable'}. Please check your Firebase credentials and Firestore rules.`
               : `Operation notice: ${err.message || 'database status unreachable. Saving locally.'}`,
             type: 'info'
           });
@@ -390,10 +390,11 @@ export default function App() {
   const isDbFunctionalRef = useRef<boolean | null>(null);
 
   const checkDatabaseFunctional = async (): Promise<boolean> => {
-    if (!isSupabaseConfigured() || !supabase) {
-      if (isDbFunctionalRef.current !== false) {
-        isDbFunctionalRef.current = false;
-        setIsDbFunctional(false);
+    if (!isFirebaseConfigured()) {
+      const wasConnected = isDbFunctionalRef.current === true;
+      isDbFunctionalRef.current = false;
+      setIsDbFunctional(false);
+      if (wasConnected) {
         setToast({
           message: 'Database disconnected',
           type: 'error'
@@ -407,34 +408,10 @@ export default function App() {
     });
 
     try {
-      const dbQueryPromise = supabase.from('admin_settings').select('key').limit(1);
-      const result = await Promise.race([dbQueryPromise, timeoutPromise]) as any;
-      
-      const error = result?.error;
-      if (error) {
-        const errorMsg = error.message?.toLowerCase() || '';
-        const isNetworkErr = errorMsg.includes('fetch') ||
-                            errorMsg.includes('network') ||
-                            errorMsg.includes('timeout') ||
-                            errorMsg.includes('aborted') ||
-                            errorMsg.includes('failed to connect') ||
-                            error.status === 0 ||
-                            error.status === 502 ||
-                            error.status === 503 ||
-                            error.status === 504 ||
-                            error.code === 'TypeError';
-        if (isNetworkErr) {
-          if (isDbFunctionalRef.current !== false) {
-            isDbFunctionalRef.current = false;
-            setIsDbFunctional(false);
-            setToast({
-              message: 'Database disconnected',
-              type: 'error'
-            });
-          }
-          return false;
-        }
-      }
+      const { collection, getDocs, limit, query } = await import('firebase/firestore');
+      const { db } = await import('./firebaseClient');
+      const dbQueryPromise = getDocs(query(collection(db!, 'admin_settings'), limit(1)));
+      await Promise.race([dbQueryPromise, timeoutPromise]);
 
       if (isDbFunctionalRef.current === false) {
         isDbFunctionalRef.current = true;
@@ -449,9 +426,10 @@ export default function App() {
       }
       return true;
     } catch (err: any) {
-      if (isDbFunctionalRef.current !== false) {
-        isDbFunctionalRef.current = false;
-        setIsDbFunctional(false);
+      const wasConnected = isDbFunctionalRef.current === true;
+      isDbFunctionalRef.current = false;
+      setIsDbFunctional(false);
+      if (wasConnected) {
         setToast({
           message: 'Database disconnected',
           type: 'error'
@@ -618,40 +596,29 @@ export default function App() {
       setAdminPasscode(loadedPasscode);
       setSocialLinks(loadedSocialLinks);
 
-      if (isSupabaseConfigured()) {
+      if (isFirebaseConfigured()) {
         await withDbLoading('Fetching and synchronizing live registry databases...', async () => {
-          console.log('Synchronizing state with live Supabase database...');
+          console.log('Synchronizing state with live Firebase database...');
           let dbErrorOccurred = false;
           
           // Fetch Admin Settings
-          const settings = await fetchAdminSettingsFromSupabase();
+          const settings = await fetchAdminSettingsFromFirebase();
           if (settings !== null) {
             if (settings.bankDetails) setBankDetails(settings.bankDetails);
             if (settings.adminPasscode) setAdminPasscode(settings.adminPasscode);
             if (settings.socialLinks) setSocialLinks(settings.socialLinks);
 
             // Sync disable_local_storage setting from database
-            try {
-              const { data: lsSettingData, error: lsSettingError } = await supabase!
-                .from('admin_settings')
-                .select('value')
-                .eq('key', 'disable_local_storage')
-                .maybeSingle();
-                
-              if (!lsSettingError && lsSettingData) {
-                const isDbLSDisabled = lsSettingData.value === 'true';
-                setDisableLocalStorage(isDbLSDisabled);
-                localStorage.setItem('korlyn_disable_local_storage', isDbLSDisabled ? 'true' : 'false');
-              }
-            } catch (e) {
-              console.error('Error fetching disable_local_storage setting:', e);
+            if (settings.disableLocalStorage !== undefined) {
+              setDisableLocalStorage(settings.disableLocalStorage);
+              localStorage.setItem('korlyn_disable_local_storage', settings.disableLocalStorage ? 'true' : 'false');
             }
           } else {
             dbErrorOccurred = true;
           }
 
           // Fetch Users
-          const dbUsers = await fetchUsersFromSupabase();
+          const dbUsers = await fetchUsersFromFirebase();
           if (dbUsers !== null) {
             setUsers(dbUsers);
           } else {
@@ -659,7 +626,7 @@ export default function App() {
           }
 
           // Fetch Payments
-          const dbPayments = await fetchPaymentsFromSupabase();
+          const dbPayments = await fetchPaymentsFromFirebase();
           if (dbPayments !== null) {
             setPayments(dbPayments);
           } else {
@@ -667,7 +634,7 @@ export default function App() {
           }
 
           if (dbErrorOccurred) {
-            console.warn('Database connection or schema warning: some live tables are not initialized yet. Operating in hybrid/local cache mode.');
+            console.warn('Database connection or schema warning: some live collections are not initialized yet. Operating in hybrid/local cache mode.');
             setToast({
               message: 'Operating in local cache/offline mode. Admin can verify and seed live tables via database diagnostics.',
               type: 'info'
@@ -688,7 +655,7 @@ export default function App() {
       } else {
         if (isLSDisabled) {
           setToast({
-            message: 'Local storage is disabled, but Supabase is not configured! Data will not persist across reloads.',
+            message: 'Local storage is disabled, but Firebase is not configured! Data will not persist across reloads.',
             type: 'error'
           });
         }
@@ -700,14 +667,14 @@ export default function App() {
 
   // 30-second background sync system for hybrid cache
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isFirebaseConfigured()) return;
 
     const performBackgroundSync = async () => {
       await withDbLoading('Syncing data in background...', async () => {
         const isLSDisabled = localStorage.getItem('korlyn_disable_local_storage') === 'true';
 
         // 1. Fetch and update Admin Settings
-        const settings = await fetchAdminSettingsFromSupabase();
+        const settings = await fetchAdminSettingsFromFirebase();
         if (settings !== null) {
           if (settings.bankDetails) {
             setBankDetails(settings.bankDetails);
@@ -724,7 +691,7 @@ export default function App() {
         }
 
         // 2. Fetch and update Users
-        const dbUsers = await fetchUsersFromSupabase();
+        const dbUsers = await fetchUsersFromFirebase();
         if (dbUsers !== null) {
           setUsers(dbUsers);
           if (!isLSDisabled) {
@@ -733,7 +700,7 @@ export default function App() {
         }
 
         // 3. Fetch and update Payments
-        const dbPayments = await fetchPaymentsFromSupabase();
+        const dbPayments = await fetchPaymentsFromFirebase();
         if (dbPayments !== null) {
           setPayments(dbPayments);
           if (!isLSDisabled) {
@@ -763,47 +730,12 @@ export default function App() {
           console.log(`Tracking fresh referral click for referrer: ${normalizedRef}`);
           
           await withDbLoading('Registering referral link entry...', async () => {
-            // Update database if Supabase is configured
-            if (isSupabaseConfigured() && supabase) {
+            // Update database if Firebase is configured
+            if (isFirebaseConfigured()) {
               try {
-                // Fetch the referrer user
-                const { data: refUserRow, error: fetchErr } = await supabase
-                  .from('users_account')
-                  .select('*')
-                  .eq('phone', normalizedRef)
-                  .maybeSingle();
-                
-                if (!fetchErr && refUserRow) {
-                  // Reference user exists, update their click details
-                  const { error: updateErr } = await supabase
-                    .from('users_account')
-                    .update({
-                      clicks_count: (refUserRow.clicks_count || 0) + 1,
-                      points: (refUserRow.points || 0) + 1
-                    })
-                    .eq('phone', normalizedRef);
-                    
-                  if (updateErr) {
-                    console.error('Error incrementing click count in Supabase:', updateErr);
-                  }
-                } else if (!refUserRow) {
-                  // Referrer doesn't exist yet, register them as a placeholder
-                  const { error: insertErr } = await supabase
-                    .from('users_account')
-                    .insert({
-                      phone: normalizedRef,
-                      clicks_count: 1,
-                      points: 1,
-                      registrations_count: 0,
-                      purchases_count: 0,
-                      created_at: new Date().toISOString()
-                    });
-                  if (insertErr) {
-                    console.error('Error creating referrer placeholder in Supabase:', insertErr);
-                  }
-                }
+                await trackReferralClickInFirebase(normalizedRef);
               } catch (dbEx) {
-                console.error('Supabase error tracking referral click:', dbEx);
+                console.error('Firebase error tracking referral click:', dbEx);
               }
             }
             
@@ -858,9 +790,9 @@ export default function App() {
     trackReferralClick();
   }, []);
 
-  // Manual refresh system to pull the freshest state from Supabase and sync with localStorage cache
+  // Manual refresh system to pull the freshest state from Firebase and sync with localStorage cache
   const handleRefreshData = async () => {
-    if (!isSupabaseConfigured()) return;
+    if (!isFirebaseConfigured()) return;
 
     // Use withDbLoading with background execution so we don't display a modal overlay,
     // keeping the refresh process extremely smooth and seamless.
@@ -868,7 +800,7 @@ export default function App() {
       const isLSDisabled = localStorage.getItem('korlyn_disable_local_storage') === 'true';
 
       // 1. Fetch latest admin settings
-      const settings = await fetchAdminSettingsFromSupabase();
+      const settings = await fetchAdminSettingsFromFirebase();
       if (settings !== null) {
         if (settings.bankDetails) {
           setBankDetails(settings.bankDetails);
@@ -885,7 +817,7 @@ export default function App() {
       }
 
       // 2. Fetch latest users
-      const dbUsers = await fetchUsersFromSupabase();
+      const dbUsers = await fetchUsersFromFirebase();
       if (dbUsers !== null) {
         setUsers(dbUsers);
         if (!isLSDisabled) {
@@ -894,7 +826,7 @@ export default function App() {
       }
 
       // 3. Fetch latest payments
-      const dbPayments = await fetchPaymentsFromSupabase();
+      const dbPayments = await fetchPaymentsFromFirebase();
       if (dbPayments !== null) {
         setPayments(dbPayments);
         if (!isLSDisabled) {
@@ -911,11 +843,11 @@ export default function App() {
     if (!isLSDisabled) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newPayments));
     }
-    if (isSupabaseConfigured()) {
+    if (isFirebaseConfigured()) {
       await withDbLoading('Saving payment records to live cloud database...', async () => {
         let success = true;
         for (const p of newPayments) {
-          const ok = await upsertPaymentToSupabase(p);
+          const ok = await upsertPaymentToFirebase(p);
           if (!ok) success = false;
         }
         if (!success) {
@@ -939,11 +871,11 @@ export default function App() {
     if (!isLSDisabled) {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(newUsers));
     }
-    if (isSupabaseConfigured()) {
+    if (isFirebaseConfigured()) {
       await withDbLoading('Saving user profiles to live cloud database...', async () => {
         let success = true;
         for (const u of newUsers) {
-          const ok = await upsertUserToSupabase(u);
+          const ok = await upsertUserToFirebase(u);
           if (!ok) success = false;
         }
         if (!success) {
@@ -992,8 +924,8 @@ export default function App() {
       if (!isLSDisabled) {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
       }
-      if (isSupabaseConfigured()) {
-        const ok = await upsertPaymentToSupabase(newRecord);
+      if (isFirebaseConfigured()) {
+        const ok = await upsertPaymentToFirebase(newRecord);
         if (!ok) {
           setToast({
             message: 'Failed to save payment to the database.',
@@ -1028,23 +960,23 @@ export default function App() {
       if (!isLSDisabled) {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
       }
-      if (isSupabaseConfigured()) {
+      if (isFirebaseConfigured()) {
         const matched = updatedUsers.find(u => normalizePhone(u.phone) === normalizedPhoneVal);
         if (matched) {
-          await upsertUserToSupabase(matched);
+          await upsertUserToFirebase(matched);
         }
       }
 
       // Fetch fresh data for the user's dashboard before closing the overlay
-      if (isSupabaseConfigured()) {
-        const freshPayments = await fetchPaymentsFromSupabase();
+      if (isFirebaseConfigured()) {
+        const freshPayments = await fetchPaymentsFromFirebase();
         if (freshPayments) {
           setPayments(freshPayments);
           if (!isLSDisabled) {
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(freshPayments));
           }
         }
-        const freshUsers = await fetchUsersFromSupabase();
+        const freshUsers = await fetchUsersFromFirebase();
         if (freshUsers) {
           setUsers(freshUsers);
           if (!isLSDisabled) {
@@ -1085,8 +1017,8 @@ export default function App() {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
       }
       
-      if (isSupabaseConfigured() && approvedRecord) {
-        await upsertPaymentToSupabase(approvedRecord);
+      if (isFirebaseConfigured() && approvedRecord) {
+        await upsertPaymentToFirebase(approvedRecord);
       }
 
       // Credit referrer with +5 points if the approved user has a referrer
@@ -1123,8 +1055,8 @@ export default function App() {
           if (!isLSDisabled) {
             localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
           }
-          if (isSupabaseConfigured() && updatedReferrerObj) {
-            await upsertUserToSupabase(updatedReferrerObj);
+          if (isFirebaseConfigured() && updatedReferrerObj) {
+            await upsertUserToFirebase(updatedReferrerObj);
           }
         }
       }
@@ -1152,8 +1084,8 @@ export default function App() {
       if (!isLSDisabled) {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
       }
-      if (isSupabaseConfigured() && rejectedRecord) {
-        await upsertPaymentToSupabase(rejectedRecord);
+      if (isFirebaseConfigured() && rejectedRecord) {
+        await upsertPaymentToFirebase(rejectedRecord);
       }
     });
   };
@@ -1180,8 +1112,8 @@ export default function App() {
     if (!disableLocalStorage) {
       localStorage.setItem('korlyn_bank_details', JSON.stringify(newDetails));
     }
-    if (isSupabaseConfigured()) {
-      upsertAdminSettingToSupabase('bank_details', JSON.stringify(newDetails)).then((ok) => {
+    if (isFirebaseConfigured()) {
+      upsertAdminSettingToFirebase('bank_details', JSON.stringify(newDetails)).then((ok) => {
         if (!ok) setToast({ message: 'Failed to save bank details to the database.', type: 'error' });
       });
     } else if (disableLocalStorage) {
@@ -1194,8 +1126,8 @@ export default function App() {
     if (!disableLocalStorage) {
       localStorage.setItem('korlyn_admin_passcode', newPasscode);
     }
-    if (isSupabaseConfigured()) {
-      upsertAdminSettingToSupabase('admin_passcode', newPasscode).then((ok) => {
+    if (isFirebaseConfigured()) {
+      upsertAdminSettingToFirebase('admin_passcode', newPasscode).then((ok) => {
         if (!ok) setToast({ message: 'Failed to save passcode to the database.', type: 'error' });
       });
     } else if (disableLocalStorage) {
@@ -1208,8 +1140,8 @@ export default function App() {
     if (!disableLocalStorage) {
       localStorage.setItem('korlyn_social_links', JSON.stringify(newLinks));
     }
-    if (isSupabaseConfigured()) {
-      upsertAdminSettingToSupabase('social_links', JSON.stringify(newLinks)).then((ok) => {
+    if (isFirebaseConfigured()) {
+      upsertAdminSettingToFirebase('social_links', JSON.stringify(newLinks)).then((ok) => {
         if (!ok) setToast({ message: 'Failed to save social links to the database.', type: 'error' });
       });
     } else if (disableLocalStorage) {
@@ -1237,8 +1169,8 @@ export default function App() {
       localStorage.setItem('korlyn_social_links', JSON.stringify(socialLinks));
     }
 
-    if (isSupabaseConfigured()) {
-      const ok = await upsertAdminSettingToSupabase('disable_local_storage', disabled ? 'true' : 'false');
+    if (isFirebaseConfigured()) {
+      const ok = await upsertAdminSettingToFirebase('disable_local_storage', disabled ? 'true' : 'false');
       if (!ok) {
         setToast({
           message: 'Failed to sync local storage configuration to the database.',
@@ -1255,7 +1187,7 @@ export default function App() {
     } else {
       if (disabled) {
         setToast({
-          message: 'Warning: Local storage disabled, but Supabase is not configured! Data will not persist across reloads.',
+          message: 'Warning: Local storage disabled, but Firebase is not configured! Data will not persist across reloads.',
           type: 'error'
         });
       } else {
@@ -1363,8 +1295,8 @@ export default function App() {
                 let currentUsers = [...users];
                 
                 // Fetch freshest list from DB
-                if (isSupabaseConfigured() && supabase) {
-                  const dbUsers = await fetchUsersFromSupabase();
+                if (isFirebaseConfigured()) {
+                  const dbUsers = await fetchUsersFromFirebase();
                   if (dbUsers) {
                     currentUsers = dbUsers;
                   }
@@ -1404,25 +1336,13 @@ export default function App() {
                     });
                     
                     // Fallback to fetch referrer directly from DB if not in local list
-                    if (referrersToUpsert.length === 0 && isSupabaseConfigured() && supabase) {
-                      const { data: extRefRow } = await supabase
-                        .from('users_account')
-                        .select('*')
-                        .eq('phone', normalizedRef)
-                        .maybeSingle();
-                        
-                      if (extRefRow) {
+                    if (referrersToUpsert.length === 0 && isFirebaseConfigured()) {
+                      const extRef = currentUsers.find(u => normalizePhone(u.phone) === normalizedRef);
+                      if (extRef) {
                         const updatedExtRef = {
-                          phone: extRefRow.phone,
-                          fullName: extRefRow.full_name || undefined,
-                          email: extRefRow.email || undefined,
-                          createdAt: extRefRow.created_at,
-                          referredBy: extRefRow.referred_by || undefined,
-                          clicksCount: extRefRow.clicks_count || 0,
-                          registrationsCount: (extRefRow.registrations_count || 0) + 1,
-                          purchasesCount: extRefRow.purchases_count || 0,
-                          points: (extRefRow.points || 0) + 2,
-                          passType: extRefRow.pass_type || undefined
+                          ...extRef,
+                          registrationsCount: (extRef.registrationsCount || 0) + 1,
+                          points: (extRef.points || 0) + 2
                         };
                         referrersToUpsert.push(updatedExtRef);
                       }
@@ -1432,10 +1352,10 @@ export default function App() {
                   currentUsers.push(newUser);
                   updatedUsers = currentUsers;
                   
-                  if (isSupabaseConfigured() && supabase) {
-                    await upsertUserToSupabase(newUser);
+                  if (isFirebaseConfigured()) {
+                    await upsertUserToFirebase(newUser);
                     for (const r of referrersToUpsert) {
-                      await upsertUserToSupabase(r);
+                      await upsertUserToFirebase(r);
                     }
                   }
                 } else {
@@ -1453,10 +1373,10 @@ export default function App() {
                   });
                   updatedUsers = currentUsers;
                   
-                  if (isSupabaseConfigured() && supabase) {
+                  if (isFirebaseConfigured()) {
                     const matched = updatedUsers.find(u => normalizePhone(u.phone) === normalized);
                     if (matched) {
-                      await upsertUserToSupabase(matched);
+                      await upsertUserToFirebase(matched);
                     }
                   }
                 }
@@ -1472,15 +1392,15 @@ export default function App() {
                 localStorage.setItem('korlyn_logged_in_phone', normalized);
 
                 // Fetch latest payments and users list to ensure dashboard is 100% updated with freshest records
-                if (isSupabaseConfigured()) {
-                  const freshPayments = await fetchPaymentsFromSupabase();
+                if (isFirebaseConfigured()) {
+                  const freshPayments = await fetchPaymentsFromFirebase();
                   if (freshPayments) {
                     setPayments(freshPayments);
                     if (!isLSDisabled) {
                       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(freshPayments));
                     }
                   }
-                  const freshUsers = await fetchUsersFromSupabase();
+                  const freshUsers = await fetchUsersFromFirebase();
                   if (freshUsers) {
                     setUsers(freshUsers);
                     if (!isLSDisabled) {
@@ -1683,7 +1603,7 @@ export default function App() {
 
       {/* Database Secure Loading Animation Overlay */}
       {dbLoading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md select-none pointer-events-auto animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm select-none pointer-events-auto animate-fade-in">
           <div className="relative p-[2px] rounded-2xl overflow-hidden w-72 sm:w-80 shadow-[0_0_50px_rgba(139,92,246,0.15)]">
             {/* Edge gradient moving border line */}
             <div className="absolute inset-[-200%] bg-[conic-gradient(from_0deg,#8b5cf6,#f59e0b,#3b82f6,#8b5cf6)] animate-[spin_4s_linear_infinite]" />

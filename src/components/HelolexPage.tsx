@@ -30,6 +30,8 @@ import {
 import { GamePoster, PaymentRecord, BankDetails, UserAccount } from '../types';
 import { normalizePhone } from '../App';
 import ThemeToggle from './ThemeToggle';
+import ImageWithLoader from './ImageWithLoader';
+import { uploadReceipt } from '../firebaseClient';
 
 interface HelolexPageProps {
   onBackToKorlyn: () => void;
@@ -94,6 +96,8 @@ export default function HelolexPage({
   const [copiedAccount, setCopiedAccount] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Notification sign-up modal states
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
@@ -106,8 +110,12 @@ export default function HelolexPage({
   const handleGainAccess = (e: React.FormEvent) => {
     e.preventDefault();
     const digitsOnly = authPhone.replace(/\D/g, '');
-    if (digitsOnly.length !== 10 && digitsOnly.length !== 11) {
-      setAuthError('Phone number must be 10 or 11 digits.');
+    let checkDigits = digitsOnly;
+    if (checkDigits.startsWith('234')) {
+      checkDigits = checkDigits.slice(3);
+    }
+    if (checkDigits.length !== 10 && checkDigits.length !== 11) {
+      setAuthError('Please enter a valid Nigerian phone number (e.g. 08031234567).');
       return;
     }
     setAuthError('');
@@ -267,31 +275,55 @@ export default function HelolexPage({
   };
 
   // Submit flow
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !phone || !fullName) {
       setFormError('Please provide your Full Name, active Email and Phone Number.');
       return;
     }
-    if (!receiptDataUrl) {
+    if (!receiptFile && !receiptDataUrl) {
       setFormError('A payment receipt screenshot is required.');
       return;
     }
 
-    const refPhoneVal = sessionStorage.getItem('korlyn_active_referrer') || undefined;
-    onRegisterNewUser(phone, refPhoneVal, fullName, email, selectedPass);
-    const amountVal = selectedPass === 'multiple' ? '₦100,000' : '₦25,000';
-    onSubmitPayment(email, phone, receiptDataUrl, receiptFile?.name || 'receipt_screenshot.png', fullName, amountVal, selectedPass);
-    
     setFormError('');
-    setFormSuccess(true);
-    
-    // reset form fields
-    setEmail('');
-    setPhone('');
-    setFullName('');
-    setReceiptFile(null);
-    setReceiptDataUrl('');
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      let finalReceiptUrl = receiptDataUrl;
+      
+      if (receiptFile) {
+        // Immediately upload file to Cloudinary with progress tracking
+        finalReceiptUrl = await uploadReceipt(receiptFile, phone, (percent) => {
+          setUploadProgress(percent);
+        });
+      }
+
+      const refPhoneVal = sessionStorage.getItem('korlyn_active_referrer') || undefined;
+      const amountVal = selectedPass === 'multiple' ? '₦100,000' : '₦25,000';
+      
+      await onRegisterNewUser(phone, refPhoneVal, fullName, email, selectedPass);
+      await onSubmitPayment(email, phone, finalReceiptUrl, receiptFile?.name || 'receipt_screenshot.png', fullName, amountVal, selectedPass);
+      
+      setIsUploading(false);
+      setFormSuccess(true);
+      
+      // Log the user in immediately & close purchase modal
+      onLogin(phone);
+      setIsPurchaseModalOpen(false);
+
+      // reset form fields
+      setEmail('');
+      setPhone('');
+      setFullName('');
+      setReceiptFile(null);
+      setReceiptDataUrl('');
+    } catch (err: any) {
+      console.error('Error during acquisition registration and upload:', err);
+      setFormError(err.message || 'An error occurred during file upload or registration.');
+      setIsUploading(false);
+    }
   };
 
   // Find if user already submitted a payment
@@ -785,7 +817,7 @@ export default function HelolexPage({
         {/* Featured Game Realm Banner Image */}
         <div className="max-w-7xl mx-auto mb-16 relative z-10 rounded-3xl overflow-hidden border dark:border-zinc-800 border-zinc-200 shadow-2xl group/banner">
           <NeonBorder rx={24} ry={24} />
-          <img 
+          <ImageWithLoader 
             src="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png"
             alt="Helolex Game Banner Realm"
             referrerPolicy="no-referrer"
@@ -837,11 +869,12 @@ export default function HelolexPage({
 
               {/* Poster Backdrop Image & Gradient Overlay */}
               <div className="absolute inset-0 group-hover:scale-105 transition-all duration-700 pointer-events-none overflow-hidden">
-                <img 
+                <ImageWithLoader 
                   src={game.image} 
                   alt={game.title}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover opacity-[0.99] transition-opacity duration-700"
+                  containerClassName="w-full h-full"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t dark:from-zinc-950 dark:via-zinc-950/40 dark:to-transparent from-white via-white/60 to-transparent dark:opacity-90 opacity-95" />
               </div>
@@ -1382,6 +1415,22 @@ export default function HelolexPage({
                     </div>
                   </div>
 
+                  {isUploading && (
+                    <div className="space-y-1.5 pt-1 pb-2">
+                      <div className="flex justify-between items-center text-[10px] font-mono">
+                        <span className="text-zinc-400 font-bold uppercase tracking-wider">Uploading Dispatch Proof</span>
+                        <span className="text-purple-400 font-black">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                        <div 
+                          className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300" 
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-500 font-mono italic">Please keep this page open, uploading large screenshots can take a moment...</p>
+                    </div>
+                  )}
+
                   {/* Error handling */}
                   {formError && (
                     <p className="text-xs font-mono text-red-500 font-semibold">{formError}</p>
@@ -1397,9 +1446,12 @@ export default function HelolexPage({
                     </div>
                     <button
                       type="submit"
-                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold tracking-widest uppercase rounded-lg transition-all shadow-lg shadow-purple-500/20 cursor-pointer w-full sm:w-auto"
+                      disabled={isUploading}
+                      className={`px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold tracking-widest uppercase rounded-lg transition-all shadow-lg shadow-purple-500/20 w-full sm:w-auto ${
+                        isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
                     >
-                      SUBMIT DISPATCH PROOF
+                      {isUploading ? 'UPLOADING...' : 'SUBMIT DISPATCH PROOF'}
                     </button>
                   </div>
                 </form>

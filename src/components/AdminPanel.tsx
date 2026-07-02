@@ -31,7 +31,8 @@ import { PaymentRecord, BankDetails, UserAccount, SocialLink } from '../types';
 import { Lock, Save, KeyRound, ChevronDown, Award as AwardIcon, Share2, Database, Copy, Check, RefreshCw } from 'lucide-react';
 import { normalizePhone } from '../App';
 import { SEO_DATA } from './SEOManager';
-import { isSupabaseConfigured, testAndSeedSupabase, TestResult } from '../supabaseClient';
+import { isFirebaseConfigured, testFirebaseConnection, seedFirebaseDatabase, TestResult, SeedResult } from '../firebaseClient';
+import ImageWithLoader from './ImageWithLoader';
 
 interface AdminPanelProps {
   payments: PaymentRecord[];
@@ -113,8 +114,152 @@ export default function AdminPanel({
   const [socialFeedback, setSocialFeedback] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedKeys, setCopiedKeys] = useState(false);
-  const [isTestingSupabase, setIsTestingSupabase] = useState(false);
+  const [isTestingFirebase, setIsTestingFirebase] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [isSeedingFirebase, setIsSeedingFirebase] = useState(false);
+  const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
+
+  // Cloudinary settings states
+  const [cloudinaryCloudName, setCloudinaryCloudName] = useState(() => {
+    return localStorage.getItem('cloudinary_cloud_name') || (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || '';
+  });
+  const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState(() => {
+    return localStorage.getItem('cloudinary_upload_preset') || (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+  });
+  const [cloudinarySaveFeedback, setCloudinarySaveFeedback] = useState('');
+  const [isTestingCloudinary, setIsTestingCloudinary] = useState(false);
+  const [cloudinaryTestProgress, setCloudinaryTestProgress] = useState(0);
+  const [cloudinaryTestResult, setCloudinaryTestResult] = useState<{ success: boolean; message: string; url?: string } | null>(null);
+
+  useEffect(() => {
+    const fetchCloudinarySettingsFromFirestore = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('../firebaseClient');
+        if (db) {
+          const cloudNameDoc = await getDoc(doc(db, 'admin_settings', 'cloudinary_cloud_name'));
+          const uploadPresetDoc = await getDoc(doc(db, 'admin_settings', 'cloudinary_upload_preset'));
+          if (cloudNameDoc.exists()) {
+            const val = cloudNameDoc.data().value;
+            setCloudinaryCloudName(val);
+            localStorage.setItem('cloudinary_cloud_name', val);
+          }
+          if (uploadPresetDoc.exists()) {
+            const val = uploadPresetDoc.data().value;
+            setCloudinaryUploadPreset(val);
+            localStorage.setItem('cloudinary_upload_preset', val);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load Cloudinary settings from Firestore:', err);
+      }
+    };
+    fetchCloudinarySettingsFromFirestore();
+  }, []);
+
+  const handleSaveCloudinaryConfig = async () => {
+    setCloudinarySaveFeedback('');
+    try {
+      const trimmedCloud = cloudinaryCloudName.trim();
+      const trimmedPreset = cloudinaryUploadPreset.trim();
+
+      setCloudinaryCloudName(trimmedCloud);
+      setCloudinaryUploadPreset(trimmedPreset);
+
+      localStorage.setItem('cloudinary_cloud_name', trimmedCloud);
+      localStorage.setItem('cloudinary_upload_preset', trimmedPreset);
+
+      const { upsertAdminSettingToFirebase, isFirebaseConfigured } = await import('../firebaseClient');
+      if (isFirebaseConfigured()) {
+        const ok1 = await upsertAdminSettingToFirebase('cloudinary_cloud_name', trimmedCloud);
+        const ok2 = await upsertAdminSettingToFirebase('cloudinary_upload_preset', trimmedPreset);
+
+        if (ok1 && ok2) {
+          setCloudinarySaveFeedback('✅ Configuration successfully synchronized to Firestore database & client cache.');
+        } else {
+          setCloudinarySaveFeedback('⚠️ Saved to local browser cache, but database writing returned false.');
+        }
+      } else {
+        setCloudinarySaveFeedback('✅ Saved to local browser cache (Firebase Fallback Sandbox mode active).');
+      }
+    } catch (err: any) {
+      setCloudinarySaveFeedback(`❌ Error saving: ${err.message || err}`);
+    }
+    setTimeout(() => setCloudinarySaveFeedback(''), 5000);
+  };
+
+  const handleTestCloudinaryUpload = async () => {
+    setIsTestingCloudinary(true);
+    setCloudinaryTestProgress(0);
+    setCloudinaryTestResult(null);
+    try {
+      if (!cloudinaryCloudName.trim() || !cloudinaryUploadPreset.trim()) {
+        throw new Error('Please configure and save both Cloud Name and Upload Preset first.');
+      }
+
+      // Draw a pretty dynamic diagnostic badge on a programmatical canvas to upload as file
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#111827'; // Dark theme background
+        ctx.fillRect(0, 0, 300, 300);
+
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 300; i += 30) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, 300);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(300, i);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#3b82f6'; // Bright blue badge
+        ctx.beginPath();
+        ctx.arc(150, 150, 75, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('CLOUDINARY', 150, 130);
+        ctx.fillText('DIAGNOSTIC', 150, 150);
+        ctx.fillText('ACTIVE', 150, 170);
+      }
+
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) {
+        throw new Error('Could not generate canvas test blob.');
+      }
+      const testFile = new File([blob], `cloudinary_diagnostic_${Date.now()}.png`, { type: 'image/png' });
+
+      const { uploadReceipt } = await import('../firebaseClient');
+      console.log('Dispatching programmatical test upload to Cloudinary...');
+      const uploadedUrl = await uploadReceipt(testFile, 'ADMIN_DIAGNOSTIC', (percent) => {
+        setCloudinaryTestProgress(percent);
+      });
+
+      setCloudinaryTestResult({
+        success: true,
+        message: 'Cloudinary storage connection is fully operational! The image uploaded successfully.',
+        url: uploadedUrl
+      });
+    } catch (err: any) {
+      console.error('Test Cloudinary upload failed:', err);
+      setCloudinaryTestResult({
+        success: false,
+        message: err.message || 'An unexpected error occurred during testing.'
+      });
+    } finally {
+      setIsTestingCloudinary(false);
+    }
+  };
 
   useEffect(() => {
     setLocalLinks(socialLinks);
@@ -836,10 +981,11 @@ export default function AdminPanel({
                       <label className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider block">Social / Search Live Snippet Preview</label>
                       <div className="bg-[#0b0c10] border border-zinc-800/80 rounded-xl overflow-hidden hover:scale-[1.01] transition-transform duration-300">
                         <div className="aspect-[1.91/1] w-full bg-zinc-900 relative overflow-hidden flex items-center justify-center border-b border-zinc-900">
-                          <img 
+                          <ImageWithLoader 
                             src={SEO_DATA.korlyn.imageUrl} 
                             alt={SEO_DATA.korlyn.imageAlt}
                             className="w-full h-full object-cover opacity-85"
+                            containerClassName="w-full h-full"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
                             <span className="text-[9px] font-mono text-purple-400 uppercase tracking-widest font-bold">KORLYN CUBE SECURE ROOT</span>
@@ -936,11 +1082,12 @@ export default function AdminPanel({
                       <label className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider block">Social / Search Live Snippet Preview</label>
                       <div className="bg-[#0b0c10] border border-zinc-800/80 rounded-xl overflow-hidden hover:scale-[1.01] transition-transform duration-300">
                         <div className="aspect-[1.91/1] w-full bg-zinc-900 relative overflow-hidden flex items-center justify-center border-b border-zinc-900">
-                          <img 
+                          <ImageWithLoader 
                             src={SEO_DATA.helolex.imageUrl} 
                             alt={SEO_DATA.helolex.imageAlt}
                             className="w-full h-full object-cover opacity-85"
                             referrerPolicy="no-referrer"
+                            containerClassName="w-full h-full"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
                             <span className="text-[9px] font-mono text-amber-400 uppercase tracking-widest font-bold">HELOLEX SECURE PORTAL</span>
@@ -1028,7 +1175,7 @@ export default function AdminPanel({
               <div className="space-y-6">
                 {/* Status card */}
                 <div className={`p-6 border rounded-2xl relative overflow-hidden transition-all ${
-                  isSupabaseConfigured()
+                  isFirebaseConfigured()
                     ? 'bg-[#002B1D]/20 border-emerald-500/30 text-emerald-300'
                     : 'bg-[#2D1600]/20 border-amber-500/30 text-amber-300'
                 }`}>
@@ -1037,15 +1184,15 @@ export default function AdminPanel({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <span className={`w-3 h-3 rounded-full ${
-                          isSupabaseConfigured() ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-amber-400 shadow-lg shadow-amber-500/50 animate-pulse'
+                          isFirebaseConfigured() ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-amber-400 shadow-lg shadow-amber-500/50 animate-pulse'
                         }`} />
                         <h3 className="text-xs font-mono tracking-widest font-black uppercase text-white">
-                          {isSupabaseConfigured() ? 'FIREBASE FIRESTORE ENGINE: ONLINE' : 'FIREBASE FIRESTORE ENGINE: FALLBACK MODE'}
+                          {isFirebaseConfigured() ? 'FIREBASE FIRESTORE ENGINE: ONLINE' : 'FIREBASE FIRESTORE ENGINE: FALLBACK MODE'}
                         </h3>
                       </div>
                       <p className="text-xs text-zinc-400 font-mono leading-relaxed max-w-2xl">
-                        {isSupabaseConfigured()
-                          ? 'The application is successfully connected to your real Firebase Firestore database. All member records, reference referrals, and uploaded payments receipts are persistent. Note: Supabase Bucket remains active exclusively for receipt storage.'
+                        {isFirebaseConfigured()
+                          ? 'The application is successfully connected to your real Firebase Firestore database. All member records, reference referrals, and uploaded payments receipts are persistent.'
                           : 'The application is running in local sandbox fallback mode using localStorage. To persist data in production, configure your Firebase applet keys.'}
                       </p>
                     </div>
@@ -1090,50 +1237,255 @@ export default function AdminPanel({
                   </div>
                 </div>
 
-                {/* Firebase Test/Seed Action Panel */}
-                <div className="p-6 bg-zinc-950/60 border border-zinc-900 rounded-2xl space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest mb-1">
-                        DATABASE DIAGNOSTICS & DATA SEEDER
-                      </h4>
-                      <p className="text-[11px] text-zinc-500 font-mono leading-relaxed">
-                        Verify the live Firebase connection, check Firestore collections existence, and seed mock participant data directly into Firebase Firestore.
-                      </p>
+                {/* Cloudinary Integration Configuration Card */}
+                <div className="p-6 bg-zinc-950/60 border border-zinc-900 rounded-2xl space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/5 to-transparent blur-2xl rounded-full" />
+                  
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest flex items-center gap-2">
+                      <Database className="w-4 h-4 text-blue-400 shrink-0" />
+                      CLOUDINARY RECEIPTS STORAGE CONFIGURATION
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 font-mono leading-relaxed max-w-2xl">
+                      Configure your Cloudinary credentials for durable receipts storage. When configured, transaction receipt uploads are securely saved to your Cloudinary storage instance.
+                    </p>
+                  </div>
+
+                  {/* Troubleshooting Guide */}
+                  <div className="p-3.5 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-1.5">
+                    <p className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
+                      💡 HOW TO GET A VALID UNSIGNED UPLOAD PRESET:
+                    </p>
+                    <ol className="text-[10px] text-zinc-400 font-mono list-decimal pl-4 space-y-1 leading-normal">
+                      <li>Log into your <a href="https://cloudinary.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">Cloudinary Console</a>.</li>
+                      <li>Click the <strong>Settings (Gear Icon)</strong> in the bottom-left or top-right.</li>
+                      <li>Select the <strong>Upload</strong> tab from the sidebar/menu.</li>
+                      <li>Scroll down to the <strong>Upload presets</strong> section.</li>
+                      <li>Click <strong>"Add upload preset"</strong>.</li>
+                      <li><strong>CRITICAL STEP:</strong> Change the <strong>"Signing Mode"</strong> dropdown from <em>Signed</em> to <strong>Unsigned</strong>.</li>
+                      <li>Copy the generated <strong>Upload preset name</strong> (exactly as displayed, keeping case-sensitive) and paste it below. Then click <strong>Save Cloudinary Config</strong>.</li>
+                    </ol>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-zinc-400 font-mono font-black uppercase tracking-wider block">CLOUDINARY CLOUD NAME</label>
+                      <input
+                        type="text"
+                        value={cloudinaryCloudName}
+                        onChange={(e) => setCloudinaryCloudName(e.target.value)}
+                        placeholder="e.g. dxyz12345"
+                        className="w-full bg-zinc-900 border border-zinc-850 focus:border-blue-500/40 rounded-xl px-4 py-2 text-xs font-mono text-white focus:outline-none transition-all placeholder:text-zinc-600"
+                      />
                     </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-zinc-400 font-mono font-black uppercase tracking-wider block">UNSIGNED UPLOAD PRESET</label>
+                      <input
+                        type="text"
+                        value={cloudinaryUploadPreset}
+                        onChange={(e) => setCloudinaryUploadPreset(e.target.value)}
+                        placeholder="e.g. helolex_unsigned"
+                        className="w-full bg-zinc-900 border border-zinc-850 focus:border-blue-500/40 rounded-xl px-4 py-2 text-xs font-mono text-white focus:outline-none transition-all placeholder:text-zinc-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                     <button
                       type="button"
-                      disabled={isTestingSupabase}
-                      onClick={async () => {
-                        setIsTestingSupabase(true);
-                        setTestResult(null);
-                        try {
-                          const result = await testAndSeedSupabase();
-                          setTestResult(result);
-                        } catch (err: any) {
-                          setTestResult({
-                            success: false,
-                            message: err?.message || 'An unexpected error occurred.',
-                          });
-                        } finally {
-                          setIsTestingSupabase(false);
-                        }
-                      }}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 select-none transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                        isTestingSupabase
+                      onClick={handleSaveCloudinaryConfig}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-mono font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      SAVE CLOUDINARY CONFIG
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isTestingCloudinary}
+                      onClick={handleTestCloudinaryUpload}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-2 select-none transition-all cursor-pointer whitespace-nowrap ${
+                        isTestingCloudinary
                           ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-md shadow-orange-500/10 hover:shadow-orange-500/20'
+                          : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-100 border border-zinc-700/60 hover:border-zinc-600'
                       }`}
                     >
-                      {isTestingSupabase ? (
+                      {isTestingCloudinary ? (
                         <>
-                          <span className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                          RUNNING TEST...
+                          <span className="w-2.5 h-2.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                          TESTING UPLOAD...
                         </>
                       ) : (
-                        'TEST & SEED FIREBASE'
+                        <>
+                          <Database className="w-3.5 h-3.5 text-blue-400" />
+                          RUN CLOUDINARY UPLOAD TEST
+                        </>
                       )}
                     </button>
+                  </div>
+
+                  {isTestingCloudinary && (
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex justify-between items-center text-[10px] font-mono">
+                        <span className="text-zinc-400 font-bold uppercase tracking-wider">Test Upload Progress</span>
+                        <span className="text-blue-400 font-black">{cloudinaryTestProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full transition-all duration-300" 
+                          style={{ width: `${cloudinaryTestProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {cloudinarySaveFeedback && (
+                    <p className="text-[10px] font-mono text-zinc-300 leading-relaxed pt-1">
+                      {cloudinarySaveFeedback}
+                    </p>
+                  )}
+
+                  {cloudinaryTestResult && (
+                    <div className={`p-4 border rounded-xl font-mono text-xs space-y-2 transition-all ${
+                      cloudinaryTestResult.success
+                        ? 'bg-[#002B1D]/20 border-emerald-500/30 text-emerald-300'
+                        : 'bg-[#2D1600]/20 border-rose-500/30 text-rose-300'
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0">{cloudinaryTestResult.success ? '🟢' : '🔴'}</span>
+                        <div className="space-y-1">
+                          <p className="font-bold text-white uppercase tracking-wider text-[10px]">
+                            {cloudinaryTestResult.success ? 'CLOUDINARY TEST UPLOAD PASSED' : 'CLOUDINARY TEST UPLOAD FAILED'}
+                          </p>
+                          <p className="text-[11px] leading-relaxed text-zinc-300">
+                            {cloudinaryTestResult.message}
+                          </p>
+                          {cloudinaryTestResult.success && cloudinaryTestResult.url && (
+                            <div className="pt-1.5 space-y-1">
+                              <span className="text-[9px] text-zinc-500 block">SECURE URL:</span>
+                              <a
+                                href={cloudinaryTestResult.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:underline break-all block"
+                              >
+                                {cloudinaryTestResult.url}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Firebase Test/Seed Action Panel */}
+                <div className="p-6 bg-zinc-950/60 border border-zinc-900 rounded-2xl space-y-6">
+                  <div>
+                    <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest mb-1">
+                      DATABASE DIAGNOSTICS & DATA SEEDER
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 font-mono leading-relaxed">
+                      Validate active Firebase connectivity, verify Firestore accessibility, or populate the collections with realistic mock participant and settings data.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Connection Test Action */}
+                    <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex flex-col justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400 font-mono font-bold uppercase tracking-wider">01. CONNECTION TEST</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
+                          Checks live connection and read/write capabilities on admin_settings to ensure backend access is functional.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isTestingFirebase}
+                        onClick={async () => {
+                          setIsTestingFirebase(true);
+                          setTestResult(null);
+                          try {
+                            const result = await testFirebaseConnection();
+                            setTestResult(result);
+                          } catch (err: any) {
+                            setTestResult({
+                              success: false,
+                              message: err?.message || 'An unexpected error occurred.',
+                            });
+                          } finally {
+                            setIsTestingFirebase(false);
+                          }
+                        }}
+                        className={`w-full px-4 py-2 rounded-xl text-[10px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 select-none transition-all cursor-pointer whitespace-nowrap ${
+                          isTestingFirebase
+                            ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                            : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-100 border border-zinc-700/60 hover:border-zinc-600'
+                        }`}
+                      >
+                        {isTestingFirebase ? (
+                          <>
+                            <span className="w-2.5 h-2.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                            TESTING CONNECTION...
+                          </>
+                        ) : (
+                          'RUN CONNECTION TEST'
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Data Seeding Action */}
+                    <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex flex-col justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400 font-mono font-bold uppercase tracking-wider">02. SEED DATABASE</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
+                          Registers mock participant accounts, diagnostic settings, and test payment records inside Firebase Firestore.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isSeedingFirebase}
+                        onClick={async () => {
+                          setIsSeedingFirebase(true);
+                          setSeedResult(null);
+                          try {
+                            const result = await seedFirebaseDatabase();
+                            setSeedResult(result);
+                            if (result.success && onRefresh) {
+                              onRefresh().catch(console.error);
+                            }
+                          } catch (err: any) {
+                            setSeedResult({
+                              success: false,
+                              message: err?.message || 'An unexpected error occurred.',
+                            });
+                          } finally {
+                            setIsSeedingFirebase(false);
+                          }
+                        }}
+                        className={`w-full px-4 py-2 rounded-xl text-[10px] font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-2 select-none transition-all cursor-pointer whitespace-nowrap ${
+                          isSeedingFirebase
+                            ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-md shadow-orange-500/10 hover:shadow-orange-500/20'
+                        }`}
+                      >
+                        {isSeedingFirebase ? (
+                          <>
+                            <span className="w-2.5 h-2.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                            SEEDING DATABASE...
+                          </>
+                        ) : (
+                          'SEED MOCK DATABASE'
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   {testResult && (
@@ -1147,8 +1499,8 @@ export default function AdminPanel({
                           {testResult.success ? '🟢' : '🔴'}
                         </span>
                         <div className="space-y-1">
-                          <p className="font-bold text-white uppercase tracking-wider text-[11px]">
-                            {testResult.success ? 'DIAGNOSTIC TEST PASSED' : 'DIAGNOSTIC TEST FAILED'}
+                          <p className="font-bold text-white uppercase tracking-wider text-[10px]">
+                            {testResult.success ? 'CONNECTION DIAGNOSTIC PASSED' : 'CONNECTION DIAGNOSTIC FAILED'}
                           </p>
                           <p className="text-[11px] text-zinc-300 leading-relaxed">
                             {testResult.message}
@@ -1160,29 +1512,58 @@ export default function AdminPanel({
                         <div className="pt-2.5 border-t border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-400">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[8px]">{testResult.details.connectionOk ? '🟢' : '🔴'}</span>
-                            <span>Supabase Client: {testResult.details.connectionOk ? 'CONNECTED' : 'OFFLINE'}</span>
+                            <span>Firebase Client: {testResult.details.connectionOk ? 'CONNECTED' : 'OFFLINE'}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[8px]">{testResult.details.adminSettingsOk ? '🟢' : '🔴'}</span>
-                            <span>[admin_settings] Table: {testResult.details.adminSettingsOk ? 'ONLINE' : 'MISSING'}</span>
+                            <span>[admin_settings] Collection: {testResult.details.adminSettingsOk ? 'ONLINE' : 'MISSING'}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[8px]">{testResult.details.usersAccountOk ? '🟢' : '🔴'}</span>
-                            <span>[users_account] Table: {testResult.details.usersAccountOk ? 'ONLINE' : 'MISSING'}</span>
+                            <span>[users_account] Collection: {testResult.details.usersAccountOk ? 'ONLINE' : 'MISSING'}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-[8px]">{testResult.details.paymentsOk ? '🟢' : '🔴'}</span>
-                            <span>[payments] Table: {testResult.details.paymentsOk ? 'ONLINE' : 'MISSING'}</span>
+                            <span>[payments] Collection: {testResult.details.paymentsOk ? 'ONLINE' : 'MISSING'}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 col-span-1 sm:col-span-2 pt-1 border-t border-zinc-900">
-                            <span className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Seeding Status:</span>
-                            <span className="text-[10px] text-zinc-300">
-                              {[
-                                testResult.details.seededSettings && 'admin_passcode',
-                                testResult.details.seededUsers && 'test_user',
-                                testResult.details.seededPayments && 'test_payment'
-                              ].filter(Boolean).join(', ') || 'Tables are already seeded.'}
-                            </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {seedResult && (
+                    <div className={`p-4 border rounded-xl font-mono text-xs space-y-3 transition-all ${
+                      seedResult.success
+                        ? 'bg-[#002B1D]/20 border-emerald-500/30 text-emerald-300'
+                        : 'bg-[#2D1600]/20 border-rose-500/30 text-rose-300'
+                    }`}>
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 shrink-0">
+                          {seedResult.success ? '🟢' : '🔴'}
+                        </span>
+                        <div className="space-y-1">
+                          <p className="font-bold text-white uppercase tracking-wider text-[10px]">
+                            {seedResult.success ? 'DATABASE SEEDING SUCCESSFUL' : 'DATABASE SEEDING FAILED'}
+                          </p>
+                          <p className="text-[11px] text-zinc-300 leading-relaxed">
+                            {seedResult.message}
+                          </p>
+                        </div>
+                      </div>
+
+                      {seedResult.details && (
+                        <div className="pt-2.5 border-t border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-400">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px]">{seedResult.details.seededSettings ? '🟢' : '⚪'}</span>
+                            <span>Passcode Config: {seedResult.details.seededSettings ? 'SEEDED/UPDATED' : 'UP-TO-DATE'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px]">{seedResult.details.seededUsers ? '🟢' : '⚪'}</span>
+                            <span>Test Participant Account: {seedResult.details.seededUsers ? 'SEEDED/UPDATED' : 'UP-TO-DATE'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 col-span-1 sm:col-span-2">
+                            <span className="text-[8px]">{seedResult.details.seededPayments ? '🟢' : '⚪'}</span>
+                            <span>Test Payment Receipt: {seedResult.details.seededPayments ? 'SEEDED/UPDATED' : 'UP-TO-DATE'}</span>
                           </div>
                         </div>
                       )}
@@ -1194,7 +1575,7 @@ export default function AdminPanel({
                 <div className="bg-zinc-950/60 border border-zinc-900 rounded-2xl p-6 space-y-6">
                   <div>
                     <h4 className="text-xs font-mono font-black text-white uppercase tracking-widest mb-1">FIREBASE INITIALIZATION PATHWAY</h4>
-                    <p className="text-xs text-zinc-500 font-mono">Follow these steps to ensure durable Firestore database and Supabase Storage persistence:</p>
+                    <p className="text-xs text-zinc-500 font-mono">Follow these steps to ensure durable Firestore database and Cloudinary storage persistence:</p>
                   </div>
 
                   <div className="space-y-4 text-xs font-mono text-zinc-400">
@@ -1202,7 +1583,7 @@ export default function AdminPanel({
                       <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">1</div>
                       <div className="space-y-1">
                         <strong className="text-zinc-200">Firebase Applet Provisioning</strong>
-                        <p>Your Firebase applet with Firestore database ID <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">ai-studio-remixremixkorlyn-4a6ad53c-c9b4-4fb0-8d4e-5603377ba9df</code> is already provisioned and fully bound within our environment.</p>
+                        <p>Your Firebase applet with Firestore database ID <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">remixed-firestore-database-id</code> is already provisioned and fully bound within our environment.</p>
                       </div>
                     </div>
 
@@ -1217,8 +1598,8 @@ export default function AdminPanel({
                     <div className="flex gap-3">
                       <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-300 font-bold shrink-0">3</div>
                       <div className="space-y-1">
-                        <strong className="text-zinc-200">Configure Supabase Storage Bucket</strong>
-                        <p>Navigate to <code className="bg-zinc-900 text-purple-400 px-1 py-0.5 rounded">Storage</code> in your Supabase dashboard. Create a new public bucket named <code className="bg-zinc-900 text-emerald-400 px-1 py-0.5">receipts</code> to host receipt image proofs securely.</p>
+                        <strong className="text-zinc-200">Configure Cloudinary / Fallback Receipts Storage</strong>
+                        <p>All receipts are uploaded to Cloudinary unsigned upload configuration, or fallback cleanly to base64 Data URLs for local/offline testing seamlessly.</p>
                       </div>
                     </div>
                   </div>
@@ -1514,12 +1895,13 @@ service cloud::firestore {
             </button>
             <h3 className="text-sm font-mono tracking-wider text-white uppercase mb-4 flex-shrink-0">Payment Receipt Preview</h3>
             <div className="flex-grow overflow-y-auto min-h-0 border border-zinc-800 rounded-xl bg-zinc-900/60 flex items-center justify-center p-2">
-              {selectedReceipt.startsWith('data:') ? (
-                <img 
+              {selectedReceipt.startsWith('data:') || selectedReceipt.startsWith('http') ? (
+                <ImageWithLoader 
                   src={selectedReceipt} 
                   alt="Receipt upload proof" 
                   className="max-w-full max-h-[50vh] object-contain rounded-lg"
                   referrerPolicy="no-referrer"
+                  containerClassName="max-w-full max-h-[50vh] flex items-center justify-center"
                 />
               ) : (
                 <div className="text-center p-6 text-zinc-500 font-mono text-xs">
@@ -1575,7 +1957,7 @@ service cloud::firestore {
 
               {/* Real QR Code using api.qrserver.com */}
               <div className="p-3 bg-white rounded-xl shadow-lg shadow-purple-500/5 hover:scale-[1.02] transition-transform duration-300">
-                <img 
+                <ImageWithLoader 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
                     JSON.stringify({
                       owner: selectedQRRecord.fullName || 'HELOLEX Owner',

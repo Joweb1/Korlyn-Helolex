@@ -20,6 +20,7 @@ import {
   Code
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import ImageWithLoader from './ImageWithLoader';
 
 interface KorlynPageProps {
   onExploreHelolex: () => void;
@@ -519,11 +520,12 @@ export default function KorlynPage({
               <div className="relative z-10 w-full h-full rounded-2xl overflow-hidden border dark:border-zinc-800/80 border-zinc-200 dark:bg-zinc-950/40 bg-white/70 backdrop-blur-md p-1.5 shadow-[0_0_50px_rgba(139,92,246,0.15)] dark:shadow-[0_0_50px_rgba(139,92,246,0.15)] group hover:border-purple-500/30 transition-all duration-700">
                 <NeonBorder />
                 {/* Embedded generated cube image */}
-                <img 
+                <ImageWithLoader 
                   src={korlynCubeImg} 
                   alt="KORLYN Monolithic Product Cube"
                   className="w-full h-full object-cover rounded-xl opacity-90 group-hover:scale-105 group-hover:opacity-100 transition-all duration-700 select-none pointer-events-none"
                   referrerPolicy="no-referrer"
+                  containerClassName="w-full h-full"
                 />
 
                 {/* Overlaid Holographic label HUD */}
