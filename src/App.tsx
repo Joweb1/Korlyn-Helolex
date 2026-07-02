@@ -530,6 +530,13 @@ export default function App() {
     };
   }, []);
 
+  // Auto-prompt passcode when entering admin view if not unlocked
+  useEffect(() => {
+    if (currentView === 'admin' && !isAdminUnlocked) {
+      setIsPasscodeModalOpen(true);
+    }
+  }, [currentView, isAdminUnlocked]);
+
   // Handle HTML document theme classes
   useEffect(() => {
     const root = window.document.documentElement;
@@ -1419,26 +1426,63 @@ export default function App() {
       )}
 
       {currentView === 'admin' && (
-        <AdminPanel 
-          payments={payments}
-          users={users}
-          onApprove={handleApprovePayment}
-          onReject={handleRejectPayment}
-          onViewCertificate={setViewingCertificatePayment}
-          onClose={() => navigateTo('korlyn')}
-          theme={theme}
-          setTheme={setTheme}
-          bankDetails={bankDetails}
-          onUpdateBankDetails={handleUpdateBankDetails}
-          adminPasscode={adminPasscode}
-          onUpdatePasscode={handleUpdatePasscode}
-          onLockConsole={handleTriggerLock}
-          socialLinks={socialLinks}
-          onUpdateSocialLinks={handleUpdateSocialLinks}
-          disableLocalStorage={disableLocalStorage}
-          onToggleDisableLocalStorage={handleToggleDisableLocalStorage}
-          onRefresh={handleRefreshData}
-        />
+        isAdminUnlocked ? (
+          <AdminPanel 
+            payments={payments}
+            users={users}
+            onApprove={handleApprovePayment}
+            onReject={handleRejectPayment}
+            onViewCertificate={setViewingCertificatePayment}
+            onClose={() => navigateTo('korlyn')}
+            theme={theme}
+            setTheme={setTheme}
+            bankDetails={bankDetails}
+            onUpdateBankDetails={handleUpdateBankDetails}
+            adminPasscode={adminPasscode}
+            onUpdatePasscode={handleUpdatePasscode}
+            onLockConsole={handleTriggerLock}
+            socialLinks={socialLinks}
+            onUpdateSocialLinks={handleUpdateSocialLinks}
+            disableLocalStorage={disableLocalStorage}
+            onToggleDisableLocalStorage={handleToggleDisableLocalStorage}
+            onRefresh={handleRefreshData}
+          />
+        ) : (
+          <div className="min-h-screen dark:bg-[#05070B] bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+            {/* Background design glow */}
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 dark:bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+            
+            <div className="max-w-md w-full text-center space-y-6 z-10">
+              <div className="mx-auto w-16 h-16 rounded-2xl dark:bg-zinc-900 bg-white border dark:border-zinc-800 border-zinc-200 flex items-center justify-center dark:text-purple-400 text-purple-600 shadow-md">
+                <Lock className="w-8 h-8 animate-pulse" />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold tracking-tight dark:text-white text-zinc-900 uppercase font-mono">
+                  Administrative Access Required
+                </h2>
+                <p className="text-sm dark:text-zinc-400 text-zinc-500 max-w-xs mx-auto">
+                  This interface contains restricted registry metrics and payment records. Please authenticate using the 4-digit PIN.
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
+                <button
+                  onClick={() => setIsPasscodeModalOpen(true)}
+                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  Enter PIN Code
+                </button>
+                <button
+                  onClick={() => navigateTo('korlyn')}
+                  className="px-6 py-2.5 dark:bg-zinc-900 bg-white dark:hover:bg-zinc-800 hover:bg-zinc-50 dark:text-zinc-300 text-zinc-700 border dark:border-zinc-800 border-zinc-200 font-mono text-xs uppercase tracking-wider rounded-xl shadow-sm transition-all"
+                >
+                  ← Return Home
+                </button>
+              </div>
+            </div>
+          </div>
+        )
       )}
 
       {currentView === 'print-certificate' && (() => {
@@ -1505,6 +1549,9 @@ export default function App() {
               onClick={() => {
                 setIsPasscodeModalOpen(false);
                 setEnteredPasscode('');
+                if (currentView === 'admin') {
+                  navigateTo('korlyn');
+                }
               }}
               className="absolute top-4 right-4 p-1.5 dark:text-zinc-500 text-zinc-400 dark:hover:text-white hover:text-zinc-900 transition-colors"
             >
