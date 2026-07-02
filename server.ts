@@ -89,7 +89,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta property="og:type" content="website" />
     <meta property="og:title" content="HELOLEX Realms | Play Epic Indie Games &amp; Claim Game Passes" />
     <meta property="og:description" content="Play premium indie games like Solstice Assassin, Ludo Max, and Sweet Match on HELOLEX. Claim your official verified game pass and unlock your mobile validation QR code. Enter the elite gaming lobby now." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png" />
+    <meta property="og:image" content="${baseUrl}/helolex_game_banner.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
@@ -101,7 +101,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="HELOLEX Realms | Play Epic Indie Games &amp; Claim Game Passes" />
     <meta name="twitter:description" content="Play premium indie games like Solstice Assassin, Ludo Max, and Sweet Match on HELOLEX. Claim your official verified game pass and unlock your mobile validation QR code. Enter the elite gaming lobby now." />
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png" />`;
+    <meta name="twitter:image" content="${baseUrl}/helolex_game_banner.png" />`;
   }
 
   if (pathname === '/admin' || pathname.startsWith('/admin')) {
@@ -112,7 +112,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta property="og:type" content="article" />
     <meta property="og:title" content="HELOLEX Admin Console | Secure Verification &amp; Audit Panel" />
     <meta property="og:description" content="Secure administrative interface. Oversee digital ownership contracts, audit incoming financial records, manage bank transfers, and provision secure mobile validation QR certificates." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/korlyn_cube_illustration.jpg" />
+    <meta property="og:image" content="${baseUrl}/korlyn_cube_illustration.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="1200" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -124,7 +124,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="HELOLEX Admin Console | Secure Verification &amp; Audit Panel" />
     <meta name="twitter:description" content="Secure administrative interface. Oversee digital ownership contracts, audit incoming financial records, manage bank transfers, and provision secure mobile validation QR certificates." />
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/korlyn_cube_illustration.jpg" />`;
+    <meta name="twitter:image" content="${baseUrl}/korlyn_cube_illustration.jpg" />`;
   }
 
   if (pathname === '/print-certificate' || pathname.startsWith('/print-certificate')) {
@@ -135,7 +135,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta property="og:type" content="article" />
     <meta property="og:title" content="Registry Verification Certificate | Secured Record" />
     <meta property="og:description" content="Official digital title verification registry page. Print or download certified credentials proving premium digital ownership under the HELOLEX protocol." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/korlyn_cube_illustration.jpg" />
+    <meta property="og:image" content="${baseUrl}/korlyn_cube_illustration.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="1200" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -147,7 +147,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Registry Verification Certificate | Secured Record" />
     <meta name="twitter:description" content="Official digital title verification registry page. Print or download certified credentials proving premium digital ownership under the HELOLEX protocol." />
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/korlyn_cube_illustration.jpg" />`;
+    <meta name="twitter:image" content="${baseUrl}/korlyn_cube_illustration.jpg" />`;
   }
 
   // Default Fallback Case (Using the HELOLEX banner image and details as fallback SEO cards)
@@ -158,7 +158,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta property="og:type" content="website" />
     <meta property="og:title" content="KORLYN | Your Premium Platform for Digital Assets &amp; Direct Payments" />
     <meta property="og:description" content="Claim, showcase, and monetize your digital creations instantly with KORLYN. Easy-to-use live dashboards, verified ownership registries, and fast global payouts. No code required. Set up your custom digital store and start earning today." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png" />
+    <meta property="og:image" content="${baseUrl}/helolex_game_banner.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
@@ -170,7 +170,7 @@ function getMetaTagsForPath(urlPath: string, host: string, protocol: string): st
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="KORLYN | Your Premium Platform for Digital Assets &amp; Direct Payments" />
     <meta name="twitter:description" content="Claim, showcase, and monetize your digital creations instantly with KORLYN. Easy-to-use live dashboards, verified ownership registries, and fast global payouts. No code required. Set up your custom digital store and start earning today." />
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png" />`;
+    <meta name="twitter:image" content="${baseUrl}/helolex_game_banner.png" />`;
 }
 
 startServer();

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import NeonBorder from './NeonBorder';
 import helolexBgImg from '../assets/images/helolex_cinematic_orange_bg_1782758626894.jpg';
+import solsticeAssassinImg from '../assets/images/solstice_assassin.png';
+import helolexLudoMaxImg from '../assets/images/helolex_ludo_max.png';
+import helolexSweetMatchImg from '../assets/images/helolex_sweet_match.png';
+import helolexBoasterImg from '../assets/images/helolex_boaster.png';
+import helolexRoadBallImg from '../assets/images/helolex_road_ball.png';
 import { 
   Shield, 
   Terminal, 
@@ -182,7 +187,7 @@ export default function HelolexPage({
       genre: 'STEALTH ACTION',
       rating: 'PEGI 18',
       description: 'A fast-paced 3D stealth action adventure where players become a futuristic ninja assassin, dodging enemies, eliminating robotic guards, collecting upgrades, and completing challenging missions across vibrant cyberpunk worlds.',
-      image: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/solstice_assassin.png',
+      image: solsticeAssassinImg,
       accentColor: '#8B5CF6',
       comingSoon: true
     },
@@ -192,7 +197,7 @@ export default function HelolexPage({
       genre: 'MULTIPLAYER LUDO',
       rating: 'PEGI 3',
       description: 'A modern multiplayer Ludo experience featuring online matches, private rooms, tournaments, AI opponents, power-ups, and beautiful animated boards for friends and family.',
-      image: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_ludo_max.png',
+      image: helolexLudoMaxImg,
       accentColor: '#F59E0B',
       comingSoon: true
     },
@@ -202,7 +207,7 @@ export default function HelolexPage({
       genre: 'MATCH-3 PUZZLE',
       rating: 'PEGI 3',
       description: 'A colorful match-3 puzzle game filled with delicious candies, exciting boosters, challenging levels, and rewarding combos designed for relaxing yet addictive gameplay.',
-      image: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_sweet_match.png',
+      image: helolexSweetMatchImg,
       accentColor: '#06B6D4',
       comingSoon: true
     },
@@ -212,7 +217,7 @@ export default function HelolexPage({
       genre: 'BUBBLE SHOOTER',
       rating: 'PEGI 3',
       description: 'A vibrant bubble shooter game where players aim, shoot, and pop colorful bubbles through hundreds of fun levels using strategic shots, powerful boosters, and satisfying chain reactions.',
-      image: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_boaster.png',
+      image: helolexBoasterImg,
       accentColor: '#EC4899',
       comingSoon: true
     },
@@ -222,7 +227,7 @@ export default function HelolexPage({
       genre: '3D ARCADE ROLLER',
       rating: 'PEGI 7',
       description: 'A fast-paced 3D arcade rolling game where players guide a futuristic ball through dynamic tracks, avoid obstacles, perform precision moves, and race toward the finish line.',
-      image: 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_road_ball.png',
+      image: helolexRoadBallImg,
       accentColor: '#3B82F6',
       comingSoon: true
     }

@@ -150,6 +150,13 @@ export default function SEOManager({ currentView }: SEOManagerProps) {
     const siteUrl = window.location.origin + (currentView === 'korlyn' ? '/' : `/${currentView}`);
     setLinkTag('canonical', siteUrl);
 
+    // Dynamic Favicon Update based on Active View
+    if (currentView === 'helolex') {
+      setLinkTag('icon', '/favicon-helolex.svg');
+    } else {
+      setLinkTag('icon', '/favicon.svg');
+    }
+
     setMetaTag('property', 'og:title', data.title);
     setMetaTag('property', 'og:description', data.description);
     setMetaTag('property', 'og:type', currentView === 'helolex' ? 'website' : 'article');
