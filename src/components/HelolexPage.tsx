@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import NeonBorder from './NeonBorder';
-import helolexBgImg from '../assets/images/helolex_cinematic_orange_bg_1782758626894.jpg';
-import solsticeAssassinImg from '../assets/images/solstice_assassin.png';
-import helolexLudoMaxImg from '../assets/images/helolex_ludo_max.png';
-import helolexSweetMatchImg from '../assets/images/helolex_sweet_match.png';
-import helolexBoasterImg from '../assets/images/helolex_boaster.png';
-import helolexRoadBallImg from '../assets/images/helolex_road_ball.png';
+import helolexBgImg from '../assets/images/helolex_cinematic_orange_bg_1782758626894.webp';
+import solsticeAssassinImg from '../assets/images/solstice_assassin.webp';
+import helolexLudoMaxImg from '../assets/images/helolex_ludo_max.webp';
+import helolexSweetMatchImg from '../assets/images/helolex_sweet_match.webp';
+import helolexBoasterImg from '../assets/images/helolex_boaster.webp';
+import helolexRoadBallImg from '../assets/images/helolex_road_ball.webp';
 import { 
   Shield, 
   Terminal, 
@@ -823,7 +823,7 @@ export default function HelolexPage({
         <div className="max-w-7xl mx-auto mb-16 relative z-10 rounded-3xl overflow-hidden border dark:border-zinc-800 border-zinc-200 shadow-2xl group/banner">
           <NeonBorder rx={24} ry={24} />
           <ImageWithLoader 
-            src="https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/helolex_game_banner.png"
+            src="/helolex_game_banner.webp"
             alt="Helolex Game Banner Realm"
             referrerPolicy="no-referrer"
             className="w-full h-auto object-cover max-h-[480px] transform group-hover/banner:scale-[1.01] transition-all duration-700 select-none"

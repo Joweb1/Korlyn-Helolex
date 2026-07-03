@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NeonBorder from './NeonBorder';
-import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.jpg';
+import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.webp';
 import { 
   ArrowRight, 
   Gamepad2, 

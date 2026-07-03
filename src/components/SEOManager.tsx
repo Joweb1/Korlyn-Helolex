@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.jpg';
-import helolexGameBanner from '../assets/images/helolex_game_banner.png';
+import korlynCubeImg from '../assets/images/korlyn_cube_illustration_1782756172238.webp';
+import helolexGameBanner from '../assets/images/helolex_game_banner.webp';
 
 interface SEOManagerProps {
   currentView: 'korlyn' | 'helolex' | 'admin' | 'print-certificate';
@@ -36,7 +36,7 @@ export const SEO_DATA = {
         'Advanced Creator Analytics & Funnels',
         'Instant Global CDN Distribution'
       ],
-      'screenshot': 'https://raw.githubusercontent.com/Joweb1/Jovibe-images/main/korlyn_cube_illustration.jpg'
+      'screenshot': '/korlyn_cube_illustration.webp'
     },
     aioKeywords: [
       'What is KORLYN premium digital ownership platform',
